@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This repository contains a Unity 6 game client and a FastAPI backend. Unity code lives in `Assets/Scripts/` (`GameBootstrap.cs`, `GameData.cs`); editor and project settings are in `ProjectSettings/`. Backend application modules are in `backend/app/`, with API tests in `backend/tests/`. Backend setup notes are in `backend/README.md`. Keep new Unity assets under `Assets/` and backend code or tests under their corresponding `backend/` folders. Do not commit generated Unity folders such as `Library/`, `Temp/`, `Obj/`, or `Build/`.
+This workspace contains the FastAPI backend. The active Unity project is `C:\Users\good6\WarfrontMVP`, and all future Unity code and assets must be written under `C:\Users\good6\WarfrontMVP\Assets`. Existing runtime scripts are in `Assets/script/` in that project. Inspect and preserve those files before editing; they contain newer server integration than the legacy `Assets/Scripts/` copy in this workspace. Do not overwrite the active project with the legacy copy. Use the active project's `ProjectSettings/` and `Packages/` for Unity configuration. Backend application modules remain in `backend/app/`, with API tests in `backend/tests/`. Backend setup notes are in `backend/README.md`. Do not commit generated Unity folders such as `Library/`, `Temp/`, `Obj/`, or `Build/`.
 
 ## Build, Test, and Development Commands
 
@@ -13,7 +13,7 @@ Run backend commands from `backend/`:
 - `python -m pytest` runs the backend test suite; tests use SQLite by default.
 - `docker compose up -d db` starts PostgreSQL when testing against the configured database.
 
-Open the repository in Unity Hub using the Unity version recorded in `ProjectSettings/ProjectVersion.txt` (Unity 6.0.0f1). Create a scene, add a `GameBootstrap` GameObject, attach `Assets/Scripts/GameBootstrap.cs`, and press Play.
+Open `C:\Users\good6\WarfrontMVP` in Unity Hub using the version in that project's `ProjectSettings/ProjectVersion.txt` (currently `6000.3.23f1`). Preserve its existing scenes and attach `Assets/script/GameBootstrap.cs` when needed.
 
 ## Coding Style & Naming Conventions
 

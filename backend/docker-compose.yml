@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: warfront
+      POSTGRES_PASSWORD: warfront
+      POSTGRES_DB: warfront
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warfront"]
+      interval: 5s
+      retries: 10
+volumes:
+  pgdata:
