@@ -81,3 +81,30 @@ python -m venv .venv
 
 ???? ?? SQLite DB? ??? ?? JWT ?? ?????. ?? DB? ???? ????.
 Starlette ??? ?????? `httpx2`? ???? ?????.
+
+## Weekly training calendar
+
+Authenticated `GET /v1/training/season` returns all three available games in `active_games`: `range`, `drone`, `cipher`. All three open every week, each lasting 45 seconds, with independent rankings and weekly rewards. Seasons change Monday 00:00 Asia/Seoul and settle at 00:10. The legacy `active_game`, `next_game`, and `rotation` fields remain for older clients and legacy record identity; they no longer limit game availability. The calendar endpoint does not create matches, spend stamina, grant rewards, or store scores.
+
+Send `{"game":"drone"}` (or `range` / `cipher`) to `POST /v1/training/runs`; an omitted game retains the old default. Query `GET /v1/training/leaderboard?game=drone` for that game's board. Run responses and reward items contain their canonical `season_id`; use it unchanged for results, historical boards and claims. Original weekly games preserve their existing week-only ID, seed, scores and claim markers; additional leagues use week-game IDs such as `2026-W45-drone`. Suffixed aliases of the original game resolve to the same claim marker, preventing duplicate credits. Historical board queries can include both `season_id` and `game`.
+
+Each game's rewards remain 30 diamonds for first place, 20 for ranks 2–3, 10 for ranks 4–10 and 3 for other positive-score participants. Claims are once per account/game/week, valid for 28 days after settlement. The reward history can contain up to 30 entries. Existing single-active-run and replay validation rules still apply. Tests: `tests/test_training_seasons.py`, `tests/test_training_league.py`, `tests/test_training_three_games.py`.
+
+## 첫 플레이·분석·공용 훈련 순위
+
+기존 DB에는 먼저 백업 후 [성장 기능 스키마 적용](deploy/growth-schema.md)을 실행한다. 새 환경은 기존 `AUTO_CREATE_TABLES` 설정을 따른다. 운영 배포를 자동 실행하는 절차는 아니다.
+
+- `GET/POST /v1/experience`: 안내 단계·완료/건너뛰기·분석 동의. 분석은 기본 비동의이며 안내 진행 저장과 독립적이다.
+- `POST /v1/experience/events`: 동의 계정만 허용된 클라이언트 이벤트를 최대 50개씩 수집한다. 서버 경기 정산 이벤트와 출처를 분리한다.
+- `POST /v1/training/runs`, `POST /v1/training/runs/{id}/finish`, `POST /v1/training/runs/{id}/cancel`: 서버 발급 시드·v2 입력 재계산·중복 제출 복구. 클라이언트 점수는 받지 않는다.
+- `GET /v1/training/leaderboard`, `GET /v1/training/rewards`, `POST /v1/training/rewards/{season_id}/claim`: 상위 50명·내 순위·주간 보상 1회 지급. 시즌은 월요일 00:00 KST 교체, 00:10 이후 확정, 보상 수령 기한은 확정 후 28일이다.
+
+최근 7일 운영 지표를 읽기만 하는 명령:
+
+```powershell
+.\.venv\Scripts\python.exe -m tools.player_metrics --days 7
+```
+
+분석은 동의 계정 중 관측된 표본이며 지연 이벤트는 전환·리텐션에서 제외한다. 일별 KST 코호트, 모드별 완료율, 첫 게임 전환·재도전·D1, 매칭 지표를 JSON으로 출력한다. `--prune`은 30일이 지난 원시 이벤트를 삭제하는 별도 운영 작업이므로 보관 정책에 따라 명시적으로 실행한다. 최초 관측 기준 시각은 최소 메타데이터로 유지한다.
+
+전체 설계·검증 기록은 [플레이어 성장 기능](../PLAYER_GROWTH_2026-11-04.md)에 있다.

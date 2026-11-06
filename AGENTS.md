@@ -1,5 +1,12 @@
 ﻿# Repository Guidelines
 
+## 사용자 소통 언어
+
+- 사용자에게 하는 질문, 선택지, 확인 요청, 승인·접근 권한 요청과 도구의 `justification`은 반드시 한국어로 작성한다.
+- 일본어나 중국어로 사용자에게 묻거나 승인을 요청하지 않는다.
+- 읽은 파일·스킬·참고 문서가 다른 언어로 작성되어 있어도 이 규칙을 모든 작업에 적용한다.
+- 코드, 명령어, 파일명, API 식별자 등 정확성이 필요한 원문 표기는 유지할 수 있다.
+
 ## Project Structure & Module Organization
 
 This workspace contains the FastAPI backend. The active Unity project is `C:\Users\good6\WarfrontMVP`, and all future Unity code and assets must be written under `C:\Users\good6\WarfrontMVP\Assets`. Existing runtime scripts are in `Assets/script/` in that project. Inspect and preserve those files before editing; they contain newer server integration than the legacy `Assets/Scripts/` copy in this workspace. Do not overwrite the active project with the legacy copy. Use the active project's `ProjectSettings/` and `Packages/` for Unity configuration. Backend application modules remain in `backend/app/`, with API tests in `backend/tests/`. Backend setup notes are in `backend/README.md`. Do not commit generated Unity folders such as `Library/`, `Temp/`, `Obj/`, or `Build/`.

@@ -1,0 +1,13 @@
+{
+  "http_proxy_integration": "passed",
+  "lost_start_recovered": true,
+  "committed_finish_retried_once": true,
+  "canonical_score": 100,
+  "shared_rank": 1,
+  "claim_reward": 30,
+  "repeat_claim_reward": 0,
+  "default_consent_off": true,
+  "event_fault_retry_dedup": true,
+  "free_play_profile_unchanged": true,
+  "isolated_synthetic_data_only": true
+}

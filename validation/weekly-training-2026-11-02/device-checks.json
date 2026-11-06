@@ -1,0 +1,58 @@
+{
+  "device_scope": "One connected Android phone, USB local server",
+  "range": {
+    "season": "2026-W45",
+    "calendar": "actual",
+    "score": 3480,
+    "hits": 25,
+    "friendly_hits": 0
+  },
+  "drone": {
+    "season": "2026-W46",
+    "calendar": "test-only future-week API injection",
+    "score": 500,
+    "deliveries": 2
+  },
+  "cipher": {
+    "season": "2026-W47",
+    "calendar": "test-only future-week API injection",
+    "score": 200,
+    "completed_codes": 1,
+    "mistakes": 1
+  },
+  "profile_before": {
+    "diamonds": 133,
+    "stamina": 40,
+    "rating": 1000
+  },
+  "profile_after": {
+    "diamonds": 133,
+    "stamina": 40,
+    "rating": 1000
+  },
+  "latest_online_match_unchanged": true,
+  "best_after_process_restart": 3480,
+  "pause_and_focus_return": "Verified",
+  "locked_other_game": "Verified",
+  "online_mode_screen": "1:1 and 3:3 entry preserved; no new online match started",
+  "cleanup": "Calendar override blank, proxy stopped, direct API USB reverse restored, app left in lobby",
+  "screenshots": [
+    "cipher-input.png",
+    "cipher-playing.png",
+    "range-playing.png",
+    "weekly-cipher-result.png",
+    "weekly-drone-carrying.png",
+    "weekly-drone-delivered.png",
+    "weekly-drone-finished.png",
+    "weekly-final-restored-lobby.png",
+    "weekly-focus-paused-stable.png",
+    "weekly-hub-cipher.png",
+    "weekly-hub-drone.png",
+    "weekly-hub-range.png",
+    "weekly-lobby.png",
+    "weekly-locked-card.png",
+    "weekly-online-modes.png",
+    "weekly-persisted-best.png",
+    "weekly-range-result.png"
+  ]
+}

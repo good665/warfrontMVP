@@ -1,0 +1,46 @@
+﻿{
+    "date":  "2026-11-02",
+    "unity_checks":  60,
+    "backend_tests":  64,
+    "android_build":  "Succeeded",
+    "errors":  0,
+    "warnings":  971,
+    "apk_bytes":  79802082,
+    "queue_cancel_stamina_before":  25,
+    "queue_cancel_stamina_after":  25,
+    "cancel_lost_response_delay_seconds":  4,
+    "queue_expiry_injected":  true,
+    "cancel_403_injected":  true,
+    "mode1":  {
+                  "status":  "finished",
+                  "team_size":  1,
+                  "capacity":  2,
+                  "reason":  "forfeit",
+                  "settled":  true
+              },
+    "mode3":  {
+                  "status":  "finished",
+                  "team_size":  3,
+                  "capacity":  6,
+                  "reason":  "forfeit",
+                  "settled":  true
+              },
+    "peer_cleanup":  [
+                         {
+                             "created":  1,
+                             "removed":  1
+                         },
+                         {
+                             "created":  5,
+                             "removed":  5
+                         }
+                     ],
+    "ios_device_tested":  false,
+    "physical_devices":  1,
+    "final_profile":  {
+                          "stamina":  5,
+                          "rating":  1000,
+                          "diamonds":  133
+                      },
+    "korean_question_rule_saved_to_agents":  3
+}

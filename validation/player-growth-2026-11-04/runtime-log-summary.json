@@ -1,0 +1,12 @@
+{
+  "scope": "available last5000 logcat entries filtered to current WARFRONT PID; not a complete long-duration log",
+  "fatal_patterns": {
+    "FATAL EXCEPTION": 0,
+    "ANR in": 0,
+    "SIGSEGV": 0,
+    "OutOfMemoryError": 0,
+    "NullReferenceException": 0,
+    "MissingReferenceException": 0,
+    "MissingMethodException": 0
+  }
+}

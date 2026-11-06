@@ -1,0 +1,34 @@
+{
+  "unity_version": "6000.3.23f1",
+  "build": {
+    "result": "Succeeded",
+    "package_id": "com.good665.warfrontmvp.dev",
+    "architecture": "ARM64 / IL2CPP",
+    "signing": "Android debug key; not a Play upload signing identity",
+    "output": "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-WeeklyTraining.apk",
+    "target_api": 36,
+    "errors": 0,
+    "warnings": 1,
+    "development": true,
+    "bytes": 1078047492
+  },
+  "apk_sha256": "dd34904b3c194df8b5afe5d33f5c30b0932ed82637ae929f83e73953a2329dc9",
+  "training_checks": 26,
+  "arena_checks": 60,
+  "backend_tests": 75,
+  "source_sha256": {
+    "Assets/script/TrainingSimulation.cs": "aaf67f0627ea9ecc9f6d3bc3bfd634dd420efde7760edd0f013073ec9fc18a2f",
+    "Assets/script/TrainingView.cs": "16a7857bd36b92a4341d61668838d15fdde358db43351f45a31e11da3f1a011d",
+    "Assets/script/TrainingApiClient.cs": "6b1dda6a69d09784e0ecf6fb922d9bc888e1021ee7682e5480f01e69e1010625",
+    "Assets/script/GameBootstrap.cs": "3b6a143fc419f789ba0a79a527771bd3eb9b27bcba18de7a2dbbf98ac0a000ef",
+    "Assets/script/LobbyView.cs": "2859d56a15c518632ffb3ee5bf9b0d201c0faee821e85aa3df1bc7fd94a0d73d",
+    "Assets/script/GameData.cs": "3936be4652d1b03a193cc12fa230d115884b272cdcae95fe98e53d20d17cea74",
+    "Assets/Editor/TrainingChecks.cs": "dd44d18024c612b242c93d81dc5e57e546bf643efdb1b7ad872e7b8b7d394c08"
+  },
+  "build_strategy": "Isolated disk snapshot; active Editor and unsaved scene preserved",
+  "limitations": [
+    "Development APK and debug signing",
+    "No iOS physical-device verification or store submission",
+    "Future-week Android checks use test-only calendar injection"
+  ]
+}

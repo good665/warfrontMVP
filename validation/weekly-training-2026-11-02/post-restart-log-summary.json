@@ -1,0 +1,1 @@
+{"scope": "last 1500 available entries for current Warfront app PID only", "fatal_patterns": {"FATAL EXCEPTION": 0, "ANR in": 0, "SIGSEGV": 0, "OutOfMemoryError": 0, "NullReferenceException": 0, "MissingReferenceException": 0}}

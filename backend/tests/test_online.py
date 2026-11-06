@@ -345,6 +345,46 @@ def test_quick_match_cancel_preserves_other_waiting_members(online):
     assert first_id not in rooms.membership
 
 
+def test_quick_match_retry_recovers_waiting_and_active_match(online):
+    client, _ = online
+    first, _ = login(client, "retry-first")
+    second, _ = login(client, "retry-second")
+    payload = {"team_size": 1, "role": 2}
+    original = client.post("/v1/rooms/quick-match", json=payload, headers=first).json()
+    code = original["code"]
+    retried = client.post("/v1/rooms/quick-match", json=payload, headers=first)
+    assert retried.status_code == 200
+    assert retried.json()["code"] == code
+    assert len(retried.json()["members"]) == 1
+    assert client.get("/v1/me", headers=first).json()["stamina"] == 100
+    client.post("/v1/rooms/quick-match", json=payload, headers=second)
+    for headers in (first, second):
+        response = client.post("/v1/rooms/quick-match", json=payload, headers=headers)
+        assert response.status_code == 200
+        assert response.json()["code"] == code
+        assert response.json()["status"] == "active"
+        assert client.get("/v1/me", headers=headers).json()["stamina"] == 90
+    client.post(f"/v1/rooms/{code}/leave", headers=first)
+    result = client.post("/v1/rooms/quick-match", json=payload, headers=second).json()
+    assert result["code"] != code and result["status"] == "waiting"
+    assert client.get("/v1/me", headers=second).json()["diamonds"] == 3
+    assert client.get("/v1/me", headers=second).json()["stamina"] == 90
+    with SessionLocal() as db:
+        assert db.query(Match).count() == 2
+
+
+def test_quick_match_retry_cannot_switch_queue_size_or_private_room(online):
+    client, _ = online
+    queued, _ = login(client, "retry-size")
+    private, _ = login(client, "retry-private")
+    client.post("/v1/rooms/quick-match", json={"team_size": 1}, headers=queued)
+    client.post("/v1/rooms", json={}, headers=private)
+    for headers in (queued, private):
+        response = client.post("/v1/rooms/quick-match", json={"team_size": 3}, headers=headers)
+        assert response.status_code == 409
+        assert response.json()["detail"] == "already_in_room"
+
+
 def test_quick_match_does_not_use_private_rooms_or_other_team_sizes(online):
     client, _ = online
     private, _ = login(client, "private-host")

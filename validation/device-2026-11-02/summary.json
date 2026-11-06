@@ -1,0 +1,34 @@
+﻿{
+    "date":  "2026-11-02",
+    "path":  "USB reverse to loopback test API",
+    "physical_devices":  1,
+    "opponent":  "idle HTTP participant",
+    "status":  "finished",
+    "reason":  "completed",
+    "elapsed":  491.05,
+    "stage":  9,
+    "score":  [
+                  0.0,
+                  420.0000000000612
+              ],
+    "winner_team":  1,
+    "settled":  true,
+    "repeated_settled":  [
+                             true,
+                             true,
+                             true
+                         ],
+    "profile_during":  {
+                           "diamonds":  7,
+                           "stamina":  90,
+                           "rating":  1000
+                       },
+    "profile_after":  {
+                          "diamonds":  10,
+                          "stamina":  90,
+                          "rating":  1000
+                      },
+    "device_match_status":  "finished",
+    "device_won":  1,
+    "temporary_peer_cleaned":  true
+}

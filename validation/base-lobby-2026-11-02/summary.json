@@ -1,0 +1,45 @@
+﻿{
+    "date":  "2026-11-02",
+    "unity_checks":  60,
+    "backend_tests":  64,
+    "apk_build":  "Succeeded",
+    "build_errors":  0,
+    "build_warnings":  971,
+    "physical_devices":  1,
+    "http_participants":  5,
+    "squad_elapsed":  135.3,
+    "squad_stage":  3,
+    "squad_reason":  "forfeit",
+    "squad_winner":  1,
+    "squad_settled":  true,
+    "http_peer_rewards":  [
+                              0,
+                              5,
+                              0,
+                              5,
+                              0
+                          ],
+    "final_profile":  {
+                          "stamina":  50,
+                          "rating":  1000,
+                          "diamonds":  24
+                      },
+    "temporary_peer_cleanup":  {
+                                   "created":  5,
+                                   "removed":  5
+                               },
+    "runtime_errors":  {
+                           "scope":  "last 1500 available entries for current Warfront app PID only",
+                           "fatal_patterns":  {
+                                                  "FATAL EXCEPTION":  0,
+                                                  "ANR in":  0,
+                                                  "SIGSEGV":  0,
+                                                  "OutOfMemoryError":  0,
+                                                  "NullReferenceException":  0,
+                                                  "MissingReferenceException":  0
+                                              }
+                       },
+    "memory_pss_kib":  614056,
+    "two_physical_devices_tested":  false,
+    "six_real_players_tested":  false
+}

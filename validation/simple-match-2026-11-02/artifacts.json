@@ -1,0 +1,22 @@
+﻿[
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Assets\\script\\OnlineMatchView.cs",
+        "Hash":  "C24ADCB904550A24BDA7D326EF33412F520227EA4FED1B29CBB82E8AAA447C63"
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Assets\\script\\OnlineView.cs",
+        "Hash":  "568082A6356987024B9B2C5BA53E490B02D7E923C9DC24CE5C87EE5757E4856B"
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Assets\\script\\LobbyView.cs",
+        "Hash":  "CCC696D1BE2AA3E77C563887423E6CE5913DF631674C522DA664E12B42D17FA3"
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Assets\\script\\GameBootstrap.cs",
+        "Hash":  "5199D32F2AA3B0AB25ED0193147BAB518BD4AFF9BB063CCF2FF54712EBC05C3B"
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-SimpleMatch.apk",
+        "Hash":  "F4A1068B0E30418295B72311BD8A505FB3ACBC4119E058D99861E67CE006F65D"
+    }
+]

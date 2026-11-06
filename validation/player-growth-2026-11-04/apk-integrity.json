@@ -1,0 +1,58 @@
+{
+  "crc": "passed",
+  "zip_16kb_alignment": "passed",
+  "signature_verified": true,
+  "arm64_elf_load_alignments": {
+    "lib_burst_generated.so": [
+      16384,
+      16384,
+      16384,
+      16384
+    ],
+    "libc++_shared.so": [
+      16384,
+      16384,
+      16384,
+      16384
+    ],
+    "libgame.so": [
+      16384,
+      16384,
+      16384
+    ],
+    "libil2cpp.so": [
+      16384,
+      16384,
+      16384,
+      16384
+    ],
+    "libmain.so": [
+      16384,
+      16384,
+      16384,
+      16384
+    ],
+    "libswappywrapper.so": [
+      16384,
+      16384,
+      16384
+    ],
+    "libunity.so": [
+      16384,
+      16384,
+      16384,
+      16384
+    ]
+  },
+  "signing": "development/debug, not store release",
+  "apksigner": [
+    "Verifies",
+    "Verified using v1 scheme (JAR signing): false",
+    "Verified using v2 scheme (APK Signature Scheme v2): true",
+    "Verified using v3 scheme (APK Signature Scheme v3): false",
+    "Verified using v3.1 scheme (APK Signature Scheme v3.1): false",
+    "Verified using v4 scheme (APK Signature Scheme v4): false",
+    "Verified for SourceStamp: false",
+    "Number of signers: 1"
+  ]
+}

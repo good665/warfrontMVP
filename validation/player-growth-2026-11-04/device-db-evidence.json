@@ -1,0 +1,157 @@
+{
+  "device_count": 1,
+  "data_scope": "isolated synthetic DB and injected server calendar",
+  "profile": {
+    "diamonds": 30,
+    "stamina": 100,
+    "rating": 1000
+  },
+  "runs": [
+    {
+      "season": "2026-W45",
+      "game": "range",
+      "ends_at": "2026-11-08 15:00:00.000000",
+      "starts_at": "2026-11-02 03:28:44.748361",
+      "finished_at": "2026-11-02 03:29:29.799616",
+      "status": "finished",
+      "score": 3540,
+      "metrics": {
+        "score": 3540,
+        "hits": 27,
+        "friendly_hits": 0,
+        "misses": 34,
+        "shots": 42,
+        "deliveries": 0,
+        "collisions": 0,
+        "completed_codes": 0,
+        "mistakes": 0,
+        "played_ticks": 4500,
+        "elapsed_ticks": 4500
+      }
+    },
+    {
+      "season": "2026-W46",
+      "game": "drone",
+      "ends_at": "2026-11-15 15:00:00.000000",
+      "starts_at": "2026-11-15 14:59:44.671043",
+      "finished_at": "2026-11-15 15:00:29.706684",
+      "status": "finished",
+      "score": 0,
+      "metrics": {
+        "score": 0,
+        "hits": 0,
+        "friendly_hits": 0,
+        "misses": 0,
+        "shots": 0,
+        "deliveries": 0,
+        "collisions": 0,
+        "completed_codes": 0,
+        "mistakes": 0,
+        "played_ticks": 4500,
+        "elapsed_ticks": 4500
+      }
+    },
+    {
+      "season": "2026-W46",
+      "game": "drone",
+      "ends_at": "2026-11-15 15:00:00.000000",
+      "starts_at": "2026-11-15 14:59:54.849055",
+      "finished_at": "2026-11-15 15:00:39.912864",
+      "status": "finished",
+      "score": 250,
+      "metrics": {
+        "score": 250,
+        "hits": 0,
+        "friendly_hits": 0,
+        "misses": 0,
+        "shots": 0,
+        "deliveries": 1,
+        "collisions": 0,
+        "completed_codes": 0,
+        "mistakes": 0,
+        "played_ticks": 4500,
+        "elapsed_ticks": 4500
+      }
+    },
+    {
+      "season": "2026-W47",
+      "game": "cipher",
+      "ends_at": "2026-11-22 15:00:00.000000",
+      "starts_at": "2026-11-15 15:01:56.677824",
+      "finished_at": "2026-11-15 15:02:41.722405",
+      "status": "finished",
+      "score": 200,
+      "metrics": {
+        "score": 200,
+        "hits": 0,
+        "friendly_hits": 0,
+        "misses": 0,
+        "shots": 0,
+        "deliveries": 0,
+        "collisions": 0,
+        "completed_codes": 1,
+        "mistakes": 0,
+        "played_ticks": 4500,
+        "elapsed_ticks": 4500
+      }
+    }
+  ],
+  "claims": [
+    {
+      "season_id": "2026-W45",
+      "rank": 1,
+      "reward": 30
+    }
+  ],
+  "experience": {
+    "tutorial_step": 3,
+    "tutorial_status": "completed",
+    "analytics_consent": 0
+  },
+  "events": [
+    {
+      "source": "client",
+      "kind": "mode_select",
+      "count": 13,
+      "min_queue_ms": 0,
+      "max_queue_ms": 115531
+    },
+    {
+      "source": "client",
+      "kind": "session_start",
+      "count": 1,
+      "min_queue_ms": 122213,
+      "max_queue_ms": 122213
+    },
+    {
+      "source": "client",
+      "kind": "tutorial_skip",
+      "count": 1,
+      "min_queue_ms": 115533,
+      "max_queue_ms": 115533
+    },
+    {
+      "source": "client",
+      "kind": "tutorial_start",
+      "count": 1,
+      "min_queue_ms": 118598,
+      "max_queue_ms": 118598
+    },
+    {
+      "source": "server",
+      "kind": "match_complete",
+      "count": 4,
+      "min_queue_ms": 0,
+      "max_queue_ms": 0
+    },
+    {
+      "source": "server",
+      "kind": "match_start",
+      "count": 4,
+      "min_queue_ms": 0,
+      "max_queue_ms": 0
+    }
+  ],
+  "events_unique": true,
+  "tutorial_dodge_input": "Android D + left SHIFT key combination; touch movement and attack; physical two-finger dodge not separately tested"
+}

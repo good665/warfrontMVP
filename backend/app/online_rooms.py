@@ -4,6 +4,7 @@ import logging
 import secrets
 import threading
 import time
+import uuid
 from dataclasses import dataclass, field
 
 from fastapi import HTTPException
@@ -13,6 +14,7 @@ from . import game_rules as rules
 from .database import SessionLocal
 from .models import Match, Player
 from .online_arena import OnlineArena
+from .experience import safe_record_event
 
 logger = logging.getLogger(__name__)
 STEP = 0.05
@@ -31,6 +33,8 @@ class Member:
     input_at: float = 0
     rate_at: float = 0
     rate_count: int = 0
+    queue_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    queued_at: float = 0
 
 
 @dataclass
@@ -56,6 +60,7 @@ class RoomManager:
         self.membership = {}
         self.lock = threading.RLock()
         self.task = None
+        self.last_loop_tick = 0
         self.clock = time.monotonic
 
     def start(self):
@@ -69,6 +74,7 @@ class RoomManager:
                     player.stamina = min(rules.MAX_STAMINA, player.stamina + rules.GAME_COST)
                 match.status, match.finished_at = "abandoned", rules.utcnow()
             db.commit()
+        self.last_loop_tick = time.monotonic()
         self.task = asyncio.create_task(self._run())
 
     async def stop(self):
@@ -93,6 +99,7 @@ class RoomManager:
             await asyncio.sleep(STEP)
             try:
                 await asyncio.to_thread(self.tick)
+                self.last_loop_tick = time.monotonic()
             except Exception:
                 logger.exception("Room tick failed; settlement will be retried")
 
@@ -202,6 +209,12 @@ class RoomManager:
     def quick_match(self, player_id, role, team_size):
         with self.lock:
             self.tick()
+            previous = self.rooms.get(self.membership.get(player_id))
+            if (previous and previous.matchmaking and previous.team_size == team_size
+                    and previous.status in ("waiting", "active")):
+                # Retrying a request after a lost response must recover the same
+                # queue or active match without charging stamina again.
+                return self.state(previous.code, player_id)
             self._available(player_id)
             candidates = [r for r in self.rooms.values() if r.matchmaking and r.status == "waiting"
                           and r.team_size == team_size and len(r.members) < team_size * 2]
@@ -214,6 +227,9 @@ class RoomManager:
                 room, slot = self.rooms[created["code"]], 0
                 room.matchmaking = True
             room.members[slot].ready = True
+            member = room.members[slot]
+            member.queued_at = self.clock()
+            safe_record_event(player_id, "matching_wait", member.queue_id, "online1" if team_size == 1 else "online3")
             if len(room.members) == team_size * 2:
                 try:
                     self._start(room)
@@ -281,6 +297,11 @@ class RoomManager:
             db.flush()
             ids = [m.id for m in matches]
             db.commit()
+        for member, match_id in zip(room.members, ids):
+            mode = "online1" if room.team_size == 1 else "online3"
+            safe_record_event(member.player_id, "match_start", match_id, mode)
+            if room.matchmaking:
+                safe_record_event(member.player_id, "matching_success", member.queue_id, mode, duration_ms=max(0, int((self.clock() - member.queued_at) * 1000)))
         room.matches = ids
         room.game = OnlineArena([m.name for m in room.members], [m.role for m in room.members])
         room.status = "active"
@@ -319,6 +340,7 @@ class RoomManager:
                 self._complete(room, "forfeit")
             elif room.status == "waiting":
                 if room.matchmaking:
+                    safe_record_event(player_id, "matching_cancel", member.queue_id, "online1" if room.team_size == 1 else "online3", duration_ms=max(0, int((self.clock() - member.queued_at) * 1000)), success=False)
                     room.members.remove(member)
                     if self.membership.get(player_id) == room.code:
                         self.membership.pop(player_id, None)
@@ -335,6 +357,7 @@ class RoomManager:
         self._settle(room)
 
     def _settle(self, room):
+        completed_events = []
         with SessionLocal() as db:
             for slot, match_id in enumerate(room.matches):
                 match = db.scalar(select(Match).where(Match.id == match_id).with_for_update())
@@ -345,11 +368,15 @@ class RoomManager:
                     raise RuntimeError("Online participant missing")
                 won = room.game.winner == slot % 2
                 match.status, match.won, match.finished_at = "finished", won, rules.utcnow()
+                if room.reason != "server_shutdown":
+                    completed_events.append((match.player_id, match.id, match.mode, max(0, int((rules.as_utc(match.finished_at) - rules.as_utc(match.started_at)).total_seconds() * 1000))))
                 if room.reason == "server_shutdown":
                     player.stamina = min(rules.MAX_STAMINA, player.stamina + rules.GAME_COST)
                 elif won:
                     player.diamonds += 3 if room.team_size == 1 else 5
             db.commit()
+        for player_id, run_id, mode, duration_ms in completed_events:
+            safe_record_event(player_id, "match_complete", run_id, mode, duration_ms=duration_ms)
         room.settled = True
 
     def _snapshot(self, room, slot):

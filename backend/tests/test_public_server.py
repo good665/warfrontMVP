@@ -59,3 +59,15 @@ def test_ready_fails_when_room_loop_is_missing(monkeypatch):
         assert response.status_code == 503
         assert response.json()["detail"] == "room_loop_unavailable"
     engine.dispose()
+
+
+def test_ready_detects_stalled_room_loop(monkeypatch):
+    import time
+    Base.metadata.create_all(bind=engine)
+    with TestClient(app) as client:
+        with monkeypatch.context() as patch:
+            patch.setattr(rooms, "last_loop_tick", time.monotonic() - 10)
+            response = client.get("/ready")
+        assert response.status_code == 503
+        assert response.json()["detail"] == "room_loop_stalled"
+    engine.dispose()

@@ -1,0 +1,70 @@
+name: warfront-test
+
+x-api: &api
+  image: warfront-test-api:local
+  build:
+    context: ..
+  environment:
+    ENVIRONMENT: prod
+    PUBLIC_TEST_MODE: "true"
+    AUTO_CREATE_TABLES: "true"
+    DATABASE_URL: ${DATABASE_URL:-sqlite:////data/warfront.db}
+    JWT_SECRET: ${JWT_SECRET:?Generate JWT_SECRET in deploy/.env}
+    TEST_ACCESS_KEY: ${TEST_ACCESS_KEY:?Generate TEST_ACCESS_KEY in deploy/.env}
+    ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+  volumes:
+    - game_data:/data
+    - game_backups:/backups
+  read_only: true
+  tmpfs: /tmp
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  api:
+    <<: *api
+    restart: unless-stopped
+    stop_grace_period: 35s
+    healthcheck:
+      test: [CMD, python, tools/check_readiness.py, --url, "http://127.0.0.1:8000"]
+      interval: 15s
+      timeout: 6s
+      retries: 3
+      start_period: 20s
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      WARFRONT_DOMAIN: ${WARFRONT_DOMAIN:?Set WARFRONT_DOMAIN in deploy/.env}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in deploy/.env}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  maintenance:
+    <<: *api
+    profiles: [ops]
+    entrypoint: [python, tools/backup_sqlite.py]
+    command: [backup, /data/warfront.db, --output-dir, /backups]
+
+volumes:
+  game_data:
+  game_backups:
+  caddy_data:
+  caddy_config:

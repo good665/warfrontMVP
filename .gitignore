@@ -8,6 +8,7 @@
 *.csproj
 *.sln
 *.user
+*.apk
 
 # Python environments and generated files
 .venv/
@@ -28,3 +29,6 @@ __pycache__/
 # Local test-server processes, secrets, and portable tools
 .test-server/
 .tools/
+
+# Unity generated build backup folders
+*_BackUpThisFolder_ButDontShipItWithYourGame/

@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import secrets
+import time
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
@@ -16,6 +17,9 @@ from .database import Base, engine, get_db
 from .models import Match, Player
 from .online_rooms import rooms
 from .online_routes import router as online_router
+from .experience_routes import router as experience_router
+from .training_routes import router as training_router
+from .experience import safe_record_event
 from .schemas import (
     AdStaminaResponse,
     AuthResponse,
@@ -30,6 +34,7 @@ from .schemas import (
     StartMatchResponse,
 )
 from .security import create_access_token, decode_access_token
+from .training_seasons import season_at
 
 
 @asynccontextmanager
@@ -48,6 +53,8 @@ app = FastAPI(title="Warfront API", version="0.3.0", lifespan=lifespan,
               redoc_url=None if settings.public_test_mode else "/redoc",
               openapi_url=None if settings.public_test_mode else "/openapi.json")
 app.include_router(online_router)
+app.include_router(experience_router)
+app.include_router(training_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.origins,
@@ -83,6 +90,12 @@ def current_player_id(creds: HTTPAuthorizationCredentials | None = Depends(beare
 
 
 def _load_player(db: Session, player_id: str, lock: bool) -> Player:
+    # SQLite ignores FOR UPDATE. Reserve the write transaction before reading
+    # balances so an upgrade/match/daily reward cannot overwrite a weekly claim.
+    if lock and db.bind.dialect.name == "sqlite":
+        raw = db.connection().connection.driver_connection
+        if not raw.in_transaction:
+            db.execute(text("BEGIN IMMEDIATE"))
     stmt = select(Player).where(Player.id == player_id)
     if lock:
         stmt = stmt.with_for_update()  # PostgreSQL 행 잠금: 동시 요청으로 재화가 이중 지급되는 것을 방지
@@ -99,6 +112,11 @@ def get_player(player_id: str = Depends(current_player_id), db: Session = Depend
 
 def get_player_locked(player_id: str = Depends(current_player_id), db: Session = Depends(get_db)) -> Player:
     return _load_player(db, player_id, lock=True)
+
+
+@app.get("/v1/training/season")
+def training_season(player: Player = Depends(get_player)) -> dict:
+    return season_at()
 
 
 def serialize(player: Player) -> PlayerResponse:
@@ -143,6 +161,8 @@ def readiness(db: Session = Depends(get_db)):
         raise err(status.HTTP_503_SERVICE_UNAVAILABLE, "database_unavailable")
     if rooms.task is None or rooms.task.done():
         raise err(status.HTTP_503_SERVICE_UNAVAILABLE, "room_loop_unavailable")
+    if time.monotonic() - rooms.last_loop_tick > 5:
+        raise err(status.HTTP_503_SERVICE_UNAVAILABLE, "room_loop_stalled")
     return {"status": "ready", "version": app.version, "stage_seconds": 60, "room_sizes": [1, 3]}
 
 
@@ -188,6 +208,7 @@ def start_match(payload: StartMatchRequest, player: Player = Depends(get_player_
     match = Match(player_id=player.id, mode=payload.mode, stage=stage)
     db.add(match)
     db.commit()
+    safe_record_event(player.id, "match_start", match.id, match.mode)
     return StartMatchResponse(match_id=match.id, mode=payload.mode, stage=stage, player=serialize(player))
 
 
@@ -256,6 +277,7 @@ def finish_match(
     match.finished_at = now
     db.commit()
 
+    safe_record_event(player.id, "match_complete", match.id, match.mode, duration_ms=int(elapsed * 1000), success=True)
     return FinishMatchResponse(
         mode=match.mode,
         won=won,

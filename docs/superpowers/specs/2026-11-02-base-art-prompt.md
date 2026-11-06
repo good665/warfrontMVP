@@ -1,0 +1,9 @@
+# 기지 배경 생성 기록
+
+도구: built-in image_gen. 용도: Unity 로비 배경. 텍스트와 기능은 Unity UI로 표시한다.
+
+최종 저장 경로: `C:/Users/good6/WarfrontMVP/Assets/Resources/BaseLobby.png`
+
+생성 프롬프트:
+
+Create a polished original pixel art background asset for WARFRONT mobile game MAIN LOBBY, landscape aspect ratio 16:9, no text, no letters, no labels, no UI panels, no logos, no watermark. A welcoming yet tactical stylized isometric military forward operating base on a rocky plateau, hand-crafted crisp pixel art with chunky clearly visible pixels, deep pine teal, olive canvas, warm sandstone and golden late-afternoon light, richly detailed but readable, inspired by cozy pixel strategy game town maps rather than realistic war or ruined dystopia. Composition must support four clickable buildings with generous empty space at their base for UI labels: left quarter x24% y43% a circular combat training ground with sandbags and little target dummies; central x51% y39% a large command headquarters with olive roof, radio mast, glowing cyan holographic tactical map in courtyard; right x79% y44% a mechanic hangar/workshop with armored rover, tools and amber work lights; lower-right x74% y72% a small blue communications and medals memorial building. Lower-left x30% y71% a smaller boot camp barracks and crates, with main courtyard connecting all buildings. Tiny pixel soldiers patrolling for liveliness, flags, antennas, trees, solar panels, supply crates, road markings. Top 13% mostly calm muted hazy sky and distant mountains for a status bar overlay. Bottom 14% calm darker foreground grass and paving for controls overlay. Buildings entirely visible and spatially separated. No heavy dark filter, bright readable silhouettes, premium mobile game asset, attractive compact island-like base composition filling frame edge to edge.

@@ -1,0 +1,8 @@
+**
+!app/
+!app/**
+!tools/
+!tools/backup_sqlite.py
+!tools/check_readiness.py
+!requirements-lock.txt
+!Dockerfile

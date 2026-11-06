@@ -1,0 +1,22 @@
+{
+  "normal_account_restored": true,
+  "normal_calendar": {
+    "season_id": "2026-W45",
+    "active_game": "range",
+    "server_now": "2026-11-04T11:20:33.751145+00:00"
+  },
+  "isolated_test_left_real_profile_unchanged": true,
+  "real_diamonds": 133,
+  "real_rating": 1000,
+  "stamina_before": 40,
+  "stamina_after_normal_login": 100,
+  "stamina_note": "normal elapsed-time stamina recovery on login, no test reward applied",
+  "real_competitive_bests": 0,
+  "real_weekly_claims": 0,
+  "real_analytics_consent": false,
+  "fault_services_stopped": {
+    "18115": true,
+    "18116": true
+  },
+  "production_deployed": false
+}
