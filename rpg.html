@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>아르카나 연대기 - 캐릭터 장비 및 인벤토리</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans KR"', 'sans-serif'],
+            fantasy: ['"Cinzel"', 'serif'],
+          },
+          colors: {
+            obsidian: '#090b10',
+            abyss: '#0f131c',
+            slateDark: '#161c2a',
+            slateBorder: '#263045',
+            goldAccent: '#d4af37',
+            amberGlow: '#f59e0b',
+          },
+          animation: {
+            'pulse-slow': 'pulse 3.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'float': 'float 4s ease-in-out infinite',
+            'shimmer': 'shimmer 2.5s linear infinite',
+            'shake': 'shake 0.35s cubic-bezier(.36,.07,.19,.97) both',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-6px)' },
+            },
+            shimmer: {
+              '0%': { backgroundPosition: '-200% 0' },
+              '100%': { backgroundPosition: '200% 0' },
+            },
+            shake: {
+              '10%, 90%': { transform: 'translate3d(-2px, 0, 0)' },
+              '20%, 80%': { transform: 'translate3d(4px, 0, 0)' },
+              '30%, 50%, 70%': { transform: 'translate3d(-6px, 0, 0)' },
+              '40%, 60%': { transform: 'translate3d(6px, 0, 0)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* 커스텀 스크롤바 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b0e17;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #28334a;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #d4af37;
+    }
+
+    /* 등급별 테두리 및 광택 효과 */
+    .rarity-common {
+      border-color: #64748b;
+      background: linear-gradient(145deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+    }
+    .rarity-rare {
+      border-color: #3b82f6;
+      box-shadow: inset 0 0 12px rgba(59, 130, 246, 0.25), 0 0 8px rgba(59, 130, 246, 0.2);
+      background: linear-gradient(145deg, rgba(23, 37, 84, 0.75), rgba(15, 23, 42, 0.95));
+    }
+    .rarity-epic {
+      border-color: #a855f7;
+      box-shadow: inset 0 0 14px rgba(168, 85, 247, 0.35), 0 0 12px rgba(168, 85, 247, 0.25);
+      background: linear-gradient(145deg, rgba(59, 7, 100, 0.65), rgba(15, 23, 42, 0.95));
+    }
+    .rarity-legendary {
+      border-color: #f59e0b;
+      box-shadow: inset 0 0 16px rgba(245, 158, 11, 0.45), 0 0 15px rgba(245, 158, 11, 0.35);
+      background: linear-gradient(145deg, rgba(120, 53, 15, 0.65), rgba(15, 23, 42, 0.95));
+      position: relative;
+      overflow: hidden;
+    }
+    .rarity-legendary::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(110deg, transparent 30%, rgba(253, 224, 71, 0.22) 50%, transparent 70%);
+      background-size: 200% 100%;
+      animation: shimmer 3s infinite linear;
+      pointer-events: none;
+    }
+
+    /* 드래그 피드백 스타일 */
+    .slot-drag-valid {
+      border-color: #10b981 !important;
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.65), inset 0 0 12px rgba(16, 185, 129, 0.4) !important;
+      transform: scale(1.04);
+    }
+    .slot-drag-invalid {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.7), inset 0 0 12px rgba(239, 68, 68, 0.4) !important;
+      animation: shake 0.35s cubic-bezier(.36,.07,.19,.97) both;
+    }
+
+    /* 판타지 배경 문양 */
+    .bg-arcane-grid {
+      background-image: 
+        radial-gradient(circle at 50% 35%, rgba(212, 175, 55, 0.08) 0%, transparent 60%),
+        linear-gradient(to right, rgba(38, 48, 69, 0.25) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(38, 48, 69, 0.25) 1px, transparent 1px);
+      background-size: 100% 100%, 32px 32px, 32px 32px;
+    }
+  </style>
+</head>
+<body class="bg-obsidian text-slate-200 font-sans min-h-screen flex flex-col selection:bg-amber-500/30 selection:text-amber-200 overflow-x-hidden">
+
+  <!-- 상단 헤더 바 -->
+  <header class="bg-abyss/90 backdrop-blur-md border-b border-slateBorder px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500/20 to-amber-900/40 border border-amber-500/50 flex items-center justify-center shadow-inner">
+        <svg class="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-base sm:text-lg font-bold tracking-wide text-amber-100">장비 및 인벤토리</h1>
+          <span class="text-[11px] font-fantasy tracking-widest uppercase px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">Armory</span>
+        </div>
+        <p class="text-xs text-slate-400 hidden sm:block">장비를 클릭하거나 슬롯으로 드래그하여 장착하세요.</p>
+      </div>
+    </div>
+
+    <!-- 전투력 배지 및 알림 토스트 영역 -->
+    <div class="flex items-center gap-3">
+      <div id="toast-banner" class="hidden items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-300"></div>
+      <div class="flex items-center gap-2.5 bg-slateDark/90 border border-amber-500/40 px-3.5 py-1.5 rounded-lg shadow-lg">
+        <span class="text-xs text-slate-400">종합 전투력</span>
+        <span id="combat-power" class="text-base sm:text-lg font-bold text-amber-400 font-fantasy tracking-wider">1,240</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 작업 공간 -->
+  <main class="flex-1 max-w-[1440px] w-full mx-auto p-3 sm:p-5 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+    <!-- 좌측/중앙 영역 (7컬럼): 캐릭터 뷰포트 + 장착 슬롯 + 실시간 스탯 -->
+    <section class="lg:col-span-7 flex flex-col gap-5">
+      
+      <!-- 3개의 장비창(로드아웃) 요약 및 전환 컨트롤 카드 -->
+      <div class="bg-abyss border border-slateBorder rounded-2xl p-3.5 sm:p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-2.5 px-1">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <h2 class="text-xs sm:text-sm font-bold text-amber-200 tracking-wide">장비창 로드아웃 (3세트 구성)</h2>
+          </div>
+          <span class="text-[11px] text-slate-400">클릭하여 활성 장비창 전환</span>
+        </div>
+        <div id="loadout-cards" class="grid grid-cols-3 gap-2.5">
+          <!-- JS로 3개의 장비창 요약 카드 렌더링 -->
+        </div>
+      </div>
+
+      <!-- 캐릭터 장비창 메인 카드 -->
+      <div class="bg-abyss border border-slateBorder rounded-2xl p-4 sm:p-6 shadow-2xl relative overflow-hidden bg-arcane-grid">
+        <!-- 상단 캐릭터 타이틀 -->
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-slateBorder/70">
+          <div class="flex items-center gap-2.5">
+            <span class="px-2.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-bold">Lv. 60</span>
+            <h2 class="text-base sm:text-lg font-bold text-white">그림자 기사 · 카엘른</h2>
+            <span id="active-preset-badge" class="px-2 py-0.5 rounded bg-indigo-500/20 border border-indigo-400/40 text-indigo-300 text-xs font-semibold">장비창 1</span>
+          </div>
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="active-preset-subtitle">주력 밸런스 세팅 활성화</span>
+          </div>
+        </div>
+
+        <!-- 삼각형 구도 배치: 상단(투구) - 중앙(캐릭터 SVG) - 좌측 하단(갑옷) & 우측 하단(주무기) -->
+        <div class="relative flex flex-col items-center justify-center my-2 py-2">
+          <!-- 은은한 삼각형 연결 가이드 라인 -->
+          <svg class="absolute inset-0 w-full h-full pointer-events-none text-amber-500/15" viewBox="0 0 400 380" preserveAspectRatio="xMidYMid meet">
+            <polygon points="200,46 72,295 328,295" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="6 6"/>
+          </svg>
+
+          <!-- 상단 꼭짓점: 투구 슬롯 (머리 위) -->
+          <div class="equip-slot-wrapper flex flex-col items-center gap-1 z-20 mb-1" data-slot="helmet">
+            <span class="text-xs text-slate-300 font-medium">투구</span>
+            <div id="slot-helmet" class="equip-slot w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 border-dashed border-slate-600/80 bg-slateDark/70 hover:border-amber-400/70 transition-all duration-200 flex items-center justify-center cursor-pointer relative group" data-slot="helmet">
+              <!-- JS 렌더링 -->
+            </div>
+          </div>
+
+          <!-- 중단 & 하단 양 꼭짓점 영역 -->
+          <div class="w-full max-w-md flex items-end justify-between px-2 sm:px-6 relative z-10 -mt-2">
+            <!-- 왼쪽 아래 꼭짓점: 갑옷 슬롯 -->
+            <div class="equip-slot-wrapper flex flex-col items-center gap-1.5 mb-4 z-20" data-slot="armor">
+              <div id="slot-armor" class="equip-slot w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 border-dashed border-slate-600/80 bg-slateDark/70 hover:border-amber-400/70 transition-all duration-200 flex items-center justify-center cursor-pointer relative group" data-slot="armor">
+              </div>
+              <span class="text-xs text-slate-300 font-medium">갑옷</span>
+            </div>
+
+            <!-- 중앙 판타지 캐릭터 3D 아바타 뷰포트 -->
+            <div class="flex flex-col items-center justify-center relative">
+              <!-- 마법진 & 3D 캔버스 컨테이너 -->
+              <div id="character-3d-container" class="relative w-52 h-64 sm:w-64 sm:h-72 flex items-center justify-center cursor-grab active:cursor-grabbing select-none" title="드래그하여 3D 캐릭터 회전">
+                <!-- 바닥 등급 오라 -->
+                <div id="character-aura" class="absolute inset-4 rounded-full bg-amber-500/5 blur-2xl transition-all duration-500 pointer-events-none"></div>
+                <canvas id="character-3d-canvas" class="w-full h-full z-10 block"></canvas>
+                <span class="absolute bottom-1 right-2 z-20 text-[10px] text-slate-400/80 bg-obsidian/70 px-1.5 py-0.5 rounded border border-slateBorder/60 pointer-events-none">3D 회전 ↻</span>
+              </div>
+            </div>
+
+            <!-- 오른쪽 아래 꼭짓점: 주무기 슬롯 -->
+            <div class="equip-slot-wrapper flex flex-col items-center gap-1.5 mb-4 z-20" data-slot="mainWeapon">
+              <div id="slot-mainWeapon" class="equip-slot w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 border-dashed border-slate-600/80 bg-slateDark/70 hover:border-amber-400/70 transition-all duration-200 flex items-center justify-center cursor-pointer relative group" data-slot="mainWeapon">
+              </div>
+              <span class="text-xs text-slate-300 font-medium">주무기</span>
+            </div>
+          </div>
+
+          <!-- 장착 세트 현황 요약 필 -->
+          <div class="mt-2 px-3 py-1 rounded-full bg-slateDark/90 border border-slateBorder text-[11px] text-slate-300 flex items-center gap-2">
+            <span id="slot-summary-label">장비창 1 슬롯:</span>
+            <span id="equipped-count" class="font-bold text-amber-400">0 / 3</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 실시간 캐릭터 능력치(스탯) 요약 카드 -->
+      <div class="bg-abyss border border-slateBorder rounded-2xl p-4 sm:p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-3.5">
+          <h3 class="text-sm font-bold text-amber-200 flex items-center gap-2">
+            <svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 20V10M12 20V4M6 20v-6"/>
+            </svg>
+            <span id="stats-panel-title">장비창 1 능력치 요약</span>
+          </h3>
+          <span class="text-[11px] text-slate-400">기본 스탯 + 현재 장비창 보너스 합산</span>
+        </div>
+
+        <div id="stats-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+          <!-- JS로 실시간 스탯 및 증감 미리보기 렌더링 -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- 우측 영역 (5컬럼): 인벤토리 그리드 + 필터 + 아이템 상세 비교 패널 -->
+    <section class="lg:col-span-5 flex flex-col gap-5">
+      
+      <!-- 인벤토리 카드 -->
+      <div class="bg-abyss border border-slateBorder rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col">
+        <!-- 인벤토리 헤더 및 유틸리티 버튼 -->
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3.5">
+          <div class="flex items-center gap-2">
+            <h2 class="text-base font-bold text-white">보유 장비 가방</h2>
+            <span id="inventory-count" class="text-xs px-2 py-0.5 rounded bg-slateDark text-slate-300 border border-slateBorder">0 / 24</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button id="btn-auto-equip" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold text-xs shadow-md shadow-amber-900/30 transition active:scale-95 flex items-center gap-1.5 cursor-pointer">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+              </svg>
+              최적 자동 장착
+            </button>
+            <button id="btn-unequip-all" class="px-2.5 py-1.5 rounded-lg bg-slateDark hover:bg-slate-800 text-slate-300 hover:text-rose-300 border border-slateBorder text-xs font-medium transition active:scale-95 cursor-pointer">
+              전체 해제
+            </button>
+          </div>
+        </div>
+
+        <!-- 카테고리 필터 탭 (전체, 주무기, 갑옷, 투구) -->
+        <div class="grid grid-cols-4 gap-1.5 p-1 bg-obsidian rounded-xl border border-slateBorder mb-4">
+          <button class="filter-tab active py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer bg-slateDark text-amber-300 border border-amber-500/40" data-filter="all">전체</button>
+          <button class="filter-tab py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer text-slate-400 hover:text-slate-200" data-filter="mainWeapon">주무기</button>
+          <button class="filter-tab py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer text-slate-400 hover:text-slate-200" data-filter="armor">갑옷</button>
+          <button class="filter-tab py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer text-slate-400 hover:text-slate-200" data-filter="helmet">투구</button>
+        </div>
+
+        <!-- 인벤토리 슬롯 그리드 -->
+        <div id="inventory-grid" class="grid grid-cols-4 sm:grid-cols-5 gap-2.5 min-h-[240px] max-h-[320px] overflow-y-auto pr-1 content-start">
+          <!-- JS로 인벤토리 아이템 렌더링 -->
+        </div>
+      </div>
+
+      <!-- 하단 아이템 상세 정보 및 장착 장비 비교 패널 -->
+      <div id="comparison-panel" class="bg-abyss border border-slateBorder rounded-2xl p-4 sm:p-5 shadow-xl min-h-[225px] flex flex-col justify-between transition-all">
+        <!-- JS로 선택/호버된 아이템 상세 및 비교 렌더링 -->
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    // ==========================================
+    // 1. 게임 데이터 및 상태 정의
+    // ==========================================
+    const PRESET_META = [
+      { id: 0, name: '장비창 1', role: '주력 밸런스', badgeColor: 'bg-amber-500 text-slate-950' },
+      { id: 1, name: '장비창 2', role: '폭딜 / 치명', badgeColor: 'bg-rose-500 text-white' },
+      { id: 2, name: '장비창 3', role: '철벽 / 생존', badgeColor: 'bg-sky-500 text-slate-950' }
+    ];
+
+    function createEmptyEquipSet() {
+      return {
+        helmet: null,
+        armor: null,
+        mainWeapon: null
+      };
+    }
+
+    const BASE_STATS = {
+      atk: 120,
+      def: 85,
+      hp: 1500,
+      crit: 10,
+      spd: 100
+    };
+
+    const STAT_LABELS = {
+      atk: { name: '공격력', unit: '', icon: '⚔️' },
+      def: { name: '방어력', unit: '', icon: '🛡️' },
+      hp: { name: '최대 생명력', unit: '', icon: '❤️' },
+      crit: { name: '치명타 확률', unit: '%', icon: '🎯' },
+      spd: { name: '공격 속도', unit: '%', icon: '⚡' }
+    };
+
+    const SLOT_META = {
+      helmet: { label: '투구', category: 'helmet' },
+      armor: { label: '갑옷', category: 'armor' },
+      mainWeapon: { label: '주무기', category: 'mainWeapon' }
+    };
+
+    const RARITY_META = {
+      common: {
+        label: '일반',
+        score: 1,
+        colorClass: 'rarity-common',
+        textClass: 'text-slate-300',
+        badgeBg: 'bg-slate-700 text-slate-200'
+      },
+      rare: {
+        label: '희귀',
+        score: 2,
+        colorClass: 'rarity-rare',
+        textClass: 'text-blue-400',
+        badgeBg: 'bg-blue-950 text-blue-300 border border-blue-500/40'
+      },
+      epic: {
+        label: '영웅',
+        score: 3,
+        colorClass: 'rarity-epic',
+        textClass: 'text-purple-400',
+        badgeBg: 'bg-purple-950 text-purple-300 border border-purple-500/40'
+      },
+      legendary: {
+        label: '전설',
+        score: 4,
+        colorClass: 'rarity-legendary',
+        textClass: 'text-amber-400',
+        badgeBg: 'bg-amber-950 text-amber-300 border border-amber-500/40'
+      }
+    };
+
+    const INITIAL_ITEMS = [
+      {
+        id: 'item-1',
+        name: '태양을 삼킨 대검',
+        slot: 'mainWeapon',
+        rarity: 'legendary',
+        icon: 'sword-legendary',
+        stats: { atk: 245, crit: 14, spd: 8 },
+        desc: '고대 태양신의 불꽃이 벼려진 대검. 휘두를 때마다 작열하는 검기가 뿜어져 나옵니다.'
+      },
+      {
+        id: 'item-2',
+        name: '용비늘 판금 갑옷',
+        slot: 'armor',
+        rarity: 'legendary',
+        icon: 'armor-legendary',
+        stats: { def: 190, hp: 950, atk: 25 },
+        desc: '고룡의 붉은 비늘을 엮어 만든 불멸의 갑옷으로, 어떤 물리 공격도 튕겨냅니다.'
+      },
+      {
+        id: 'item-3',
+        name: '심연의 군주 투구',
+        slot: 'helmet',
+        rarity: 'epic',
+        icon: 'helmet-epic',
+        stats: { def: 98, hp: 480, crit: 6 },
+        desc: '심연의 왕좌를 지키던 수호 기사의 투구. 착용자에게 냉철한 전장의 시야를 부여합니다.'
+      },
+      {
+        id: 'item-5',
+        name: '서리늑대 한손검',
+        slot: 'mainWeapon',
+        rarity: 'epic',
+        icon: 'sword-epic',
+        stats: { atk: 168, spd: 15, crit: 8 },
+        desc: '만년설 협곡의 냉기를 머금은 날렵한 장검. 베인 자리에 서리 결정을 남깁니다.'
+      },
+      {
+        id: 'item-10',
+        name: '수호자의 철제 투구',
+        slot: 'helmet',
+        rarity: 'rare',
+        icon: 'helmet-rare',
+        stats: { def: 62, hp: 280 },
+        desc: '왕국 정규 기사단에게 지급되는 견고한 강철 투구입니다.'
+      },
+      {
+        id: 'item-11',
+        name: '강화 사슬 갑옷',
+        slot: 'armor',
+        rarity: 'rare',
+        icon: 'armor-rare',
+        stats: { def: 105, hp: 450 },
+        desc: '이중으로 엮은 강철 고리가 베기 공격을 효과적으로 흡수합니다.'
+      },
+      {
+        id: 'item-14',
+        name: '철제 브로드소드',
+        slot: 'mainWeapon',
+        rarity: 'common',
+        icon: 'sword-common',
+        stats: { atk: 85, spd: 4 },
+        desc: '균형 잡힌 무게 중심을 가진 표준 규격의 철제 검입니다.'
+      }
+    ];
+
+    // 애플리케이션 상태 (3개의 독립적인 장비창 보유 + 전체 보유 아이템 풀)
+    let state = {
+      activeLoadout: 0, // 0: 장비창 1, 1: 장비창 2, 2: 장비창 3
+      loadouts: [
+        createEmptyEquipSet(),
+        createEmptyEquipSet(),
+        createEmptyEquipSet()
+      ],
+      allItems: INITIAL_ITEMS.map(item => ({ ...item })),
+      activeFilter: 'all',
+      hoveredItem: null,
+      hoveredSource: null,
+      inspectedItem: null,
+      inspectedSource: null,
+      draggedItem: null
+    };
+
+    function getActiveEquipped() {
+      return state.loadouts[state.activeLoadout];
+    }
+
+    function getEquippedLoadoutNumbers(itemId) {
+      const nums = [];
+      state.loadouts.forEach((eqSet, idx) => {
+        if (Object.values(eqSet).some(it => it && it.id === itemId)) {
+          nums.push(idx + 1);
+        }
+      });
+      return nums;
+    }
+
+    // ==========================================
+    // 2. 인라인 SVG 아이콘 생성기
+    // ==========================================
+    function getItemIconSVG(iconKey, rarity, isLarge = false) {
+      const sizeClass = isLarge ? 'w-10 h-10' : 'w-8 h-8';
+      const strokeCol = rarity === 'legendary' ? '#fbbf24'
+        : rarity === 'epic' ? '#c084fc'
+        : rarity === 'rare' ? '#60a5fa'
+        : '#94a3b8';
+
+      if (iconKey.startsWith('sword')) {
+        return `<svg class="${sizeClass}" viewBox="0 0 24 24" fill="none" stroke="${strokeCol}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/>
+        </svg>`;
+      }
+      if (iconKey.startsWith('shield')) {
+        return `<svg class="${sizeClass}" viewBox="0 0 24 24" fill="none" stroke="${strokeCol}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v8"/><path d="M8 12h8"/>
+        </svg>`;
+      }
+      if (iconKey.startsWith('helmet')) {
+        return `<svg class="${sizeClass}" viewBox="0 0 24 24" fill="none" stroke="${strokeCol}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3a7 7 0 0 0-7 7v5l3 3h8l3-3v-5a7 7 0 0 0-7-7z"/><path d="M9 12h6"/><path d="M12 3v6"/>
+        </svg>`;
+      }
+      if (iconKey.startsWith('armor')) {
+        return `<svg class="${sizeClass}" viewBox="0 0 24 24" fill="none" stroke="${strokeCol}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 4l4-1h4l4 1 3 5-3 2v9H6v-9L3 9l3-5z"/><path d="M12 7v10"/>
+        </svg>`;
+      }
+      if (iconKey.startsWith('gloves')) {
+        return `<svg class="${sizeClass}" viewBox="0 0 24 24" fill="none" stroke="${strokeCol}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 11V6a2 2 0 0 1 4 0v4"/><path d="M11 10V5a2 2 0 0 1 4 0v5"/><path d="M15 10V7a2 2 0 0 1 4 0v7a6 6 0 0 1-6 6H9a5 5 0 0 1-5-5v-3a2 2 0 0 1 4 0"/>
+        </svg>`;
+      }
+      if (iconKey.startsWith('boots')) {
+        return `<svg class="${sizeClass}" viewBox="0 0 24 24" fill="none" stroke="${strokeCol}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 4h6v8l5 3v4H6v-4l1-3V4z"/><path d="M6 16h12"/>
+        </svg>`;
+      }
+      if (iconKey.startsWith('necklace')) {
+        return `<svg class="${sizeClass}" viewBox="0 0 24 24" fill="none" stroke="${strokeCol}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 4c0 5 3 9 6 9s6-4 6-9"/><polygon points="12,13 15,17 12,21 9,17"/>
+        </svg>`;
+      }
+      return `<svg class="${sizeClass}" viewBox="0 0 24 24" fill="none" stroke="${strokeCol}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="14" r="6"/><polygon points="12,4 14,8 10,8"/>
+      </svg>`;
+    }
+
+    function getEmptySlotPlaceholderSVG(slotKey) {
+      return `<div class="flex flex-col items-center justify-center opacity-35 group-hover:opacity-70 transition-opacity">
+        <svg class="w-6 h-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+      </div>`;
+    }
+
+    let toastTimer = null;
+    function showToast(message, type = 'info') {
+      const banner = document.getElementById('toast-banner');
+      if (!banner) return;
+
+      const styles = {
+        success: 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200',
+        error: 'bg-rose-950/90 border-rose-500/50 text-rose-200',
+        info: 'bg-slateDark/95 border-amber-500/40 text-amber-200'
+      };
+
+      banner.className = `flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-300 ${styles[type] || styles.info}`;
+      banner.textContent = message;
+      banner.classList.remove('hidden');
+
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        banner.classList.add('hidden');
+      }, 2600);
+    }
+
+    // ==========================================
+    // 3. 핵심 게임 로직 (장착, 해제, 교체, 스탯 계산)
+    // ==========================================
+    function calculateTotalStats(customEquipped = getActiveEquipped()) {
+      const total = { ...BASE_STATS };
+      Object.values(customEquipped).forEach(item => {
+        if (!item) return;
+        Object.entries(item.stats).forEach(([key, val]) => {
+          total[key] = (total[key] || 0) + val;
+        });
+      });
+      return total;
+    }
+
+    function calculateCombatPower(stats) {
+      return Math.round(
+        stats.atk * 3.2 +
+        stats.def * 2.5 +
+        stats.hp * 0.35 +
+        stats.crit * 18 +
+        stats.spd * 12
+      );
+    }
+
+    function getItemScore(item) {
+      const s = item.stats || {};
+      return (s.atk || 0) * 3.2 + (s.def || 0) * 2.5 + (s.hp || 0) * 0.35 + (s.crit || 0) * 18 + (s.spd || 0) * 12;
+    }
+
+    // 특정 장비창(loadoutIndex)에 아이템 장착
+    function equipItemToLoadout(itemId, loadoutIndex = state.activeLoadout, silent = false) {
+      const item = state.allItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      const targetSet = state.loadouts[loadoutIndex];
+      const prevEquipped = targetSet[item.slot];
+
+      if (prevEquipped && prevEquipped.id === item.id) {
+        if (!silent) showToast(`이미 [${PRESET_META[loadoutIndex].name}]에 장착된 장비입니다.`, 'info');
+        return;
+      }
+
+      targetSet[item.slot] = item;
+
+      if (loadoutIndex === state.activeLoadout) {
+        state.inspectedItem = item;
+        state.inspectedSource = 'equipped';
+      }
+
+      if (!silent) {
+        const msg = prevEquipped
+          ? `[${PRESET_META[loadoutIndex].name}] ${prevEquipped.name} → ${item.name} 교체`
+          : `[${PRESET_META[loadoutIndex].name}] ${item.name} 장착 완료`;
+        showToast(msg, 'success');
+        renderAll();
+      }
+    }
+
+    function equipItemById(itemId) {
+      equipItemToLoadout(itemId, state.activeLoadout, false);
+    }
+
+    function unequipSlot(slotKey) {
+      const targetSet = getActiveEquipped();
+      const item = targetSet[slotKey];
+      if (!item) return;
+
+      targetSet[slotKey] = null;
+      state.inspectedItem = item;
+      state.inspectedSource = 'inventory';
+      showToast(`[${PRESET_META[state.activeLoadout].name}] ${item.name} 장착 해제`, 'info');
+      renderAll();
+    }
+
+    function switchLoadout(index) {
+      if (index < 0 || index > 2 || index === state.activeLoadout) return;
+      state.activeLoadout = index;
+      state.hoveredItem = null;
+      state.hoveredSource = null;
+      showToast(`[${PRESET_META[index].name} · ${PRESET_META[index].role}] 활성화`, 'info');
+      renderAll();
+    }
+
+    function autoEquipBest() {
+      const targetSet = getActiveEquipped();
+      let changed = 0;
+
+      Object.keys(SLOT_META).forEach(slotKey => {
+        const candidates = state.allItems.filter(it => it.slot === slotKey);
+        if (candidates.length === 0) return;
+
+        candidates.sort((a, b) => getItemScore(b) - getItemScore(a));
+        const best = candidates[0];
+        if (!targetSet[slotKey] || targetSet[slotKey].id !== best.id) {
+          targetSet[slotKey] = best;
+          changed++;
+        }
+      });
+
+      if (changed > 0) {
+        showToast(`[${PRESET_META[state.activeLoadout].name}] 최고 전투력 장비 ${changed}부위 자동 장착 완료!`, 'success');
+      } else {
+        showToast(`[${PRESET_META[state.activeLoadout].name}] 이미 최적의 장비가 장착되어 있습니다.`, 'info');
+      }
+      renderAll();
+    }
+
+    function unequipAll() {
+      const targetSet = getActiveEquipped();
+      const hasAny = Object.values(targetSet).some(Boolean);
+      if (!hasAny) {
+        showToast('해제할 장착 장비가 없습니다.', 'info');
+        return;
+      }
+      state.loadouts[state.activeLoadout] = createEmptyEquipSet();
+      showToast(`[${PRESET_META[state.activeLoadout].name}] 모든 장비가 해제되었습니다.`, 'info');
+      renderAll();
+    }
+
+    function initDefaultEquipment() {
+      // 장비창 1: 주력 밸런스 세팅 (주무기, 갑옷, 투구)
+      ['item-1', 'item-2', 'item-3'].forEach(id => {
+        equipItemToLoadout(id, 0, true);
+      });
+      // 장비창 2: 폭딜 / 치명 세팅
+      ['item-5', 'item-11', 'item-3'].forEach(id => {
+        equipItemToLoadout(id, 1, true);
+      });
+      // 장비창 3: 철벽 / 생존 세팅
+      ['item-14', 'item-2', 'item-10'].forEach(id => {
+        equipItemToLoadout(id, 2, true);
+      });
+
+      state.inspectedItem = state.allItems[0];
+      state.inspectedSource = 'equipped';
+    }
+
+    // ==========================================
+    // 4. UI 렌더링 함수
+    // ==========================================
+    function renderLoadoutCards() {
+      const container = document.getElementById('loadout-cards');
+      const activeMeta = PRESET_META[state.activeLoadout];
+
+      const presetBadge = document.getElementById('active-preset-badge');
+      const presetSub = document.getElementById('active-preset-subtitle');
+      const slotSumLabel = document.getElementById('slot-summary-label');
+      const statsTitle = document.getElementById('stats-panel-title');
+
+      if (presetBadge) presetBadge.textContent = activeMeta.name;
+      if (presetSub) presetSub.textContent = `${activeMeta.role} 세팅 활성화`;
+      if (slotSumLabel) slotSumLabel.textContent = `${activeMeta.name} 슬롯:`;
+      if (statsTitle) statsTitle.textContent = `${activeMeta.name} 능력치 요약`;
+
+      container.innerHTML = PRESET_META.map((meta, idx) => {
+        const eqSet = state.loadouts[idx];
+        const isActive = idx === state.activeLoadout;
+        const equippedItems = Object.values(eqSet).filter(Boolean);
+        const cp = calculateCombatPower(calculateTotalStats(eqSet));
+
+        const previewSlots = ['mainWeapon', 'armor', 'helmet'].map(sKey => {
+          const it = eqSet[sKey];
+          if (!it) {
+            return `<span class="w-5 h-5 rounded bg-obsidian/80 border border-slateBorder/70 flex items-center justify-center text-[9px] text-slate-600">-</span>`;
+          }
+          const rCol = it.rarity === 'legendary' ? 'border-amber-400/70 bg-amber-950/50 text-amber-300'
+            : it.rarity === 'epic' ? 'border-purple-400/70 bg-purple-950/50 text-purple-300'
+            : it.rarity === 'rare' ? 'border-blue-400/70 bg-blue-950/50 text-blue-300'
+            : 'border-slate-500/70 bg-slate-800/70 text-slate-300';
+          return `<span class="w-5 h-5 rounded border ${rCol} flex items-center justify-center text-[9px] font-bold" title="${SLOT_META[sKey].label}: ${it.name}">${SLOT_META[sKey].label[0]}</span>`;
+        }).join('');
+
+        return `
+          <button
+            type="button"
+            data-loadout-index="${idx}"
+            class="loadout-card-btn text-left p-2.5 sm:p-3 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col justify-between gap-2 ${
+              isActive
+                ? 'bg-gradient-to-br from-slateDark to-amber-950/30 border-amber-400 shadow-lg shadow-amber-950/40 ring-1 ring-amber-400/40'
+                : 'bg-slateDark/50 hover:bg-slateDark border-slateBorder hover:border-slate-500 opacity-85 hover:opacity-100'
+            }"
+          >
+            <div class="flex items-center justify-between gap-1 w-full">
+              <span class="text-xs sm:text-sm font-bold ${isActive ? 'text-amber-300' : 'text-slate-200'}">${meta.name}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold ${isActive ? meta.badgeColor : 'bg-obsidian text-slate-400'}">
+                ${equippedItems.length}/3
+              </span>
+            </div>
+            <div class="text-[11px] text-slate-400 truncate w-full">${meta.role}</div>
+            <div class="flex items-center justify-between gap-1 w-full pt-1 border-t border-slateBorder/50">
+              <div class="flex items-center gap-1">${previewSlots}</div>
+              <span class="text-xs font-fantasy font-bold ${isActive ? 'text-amber-400' : 'text-slate-300'}">${cp.toLocaleString()}</span>
+            </div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    // 캐릭터 3D 모델 외형 및 바닥 오라 업데이트
+    function renderCharacterAvatar() {
+      const eq = getActiveEquipped();
+      if (window.updateCharacter3DEquipment) {
+        window.updateCharacter3DEquipment(eq);
+      }
+
+      // 장착 개수 및 바닥 오라 업데이트
+      const equippedCount = Object.values(eq).filter(Boolean).length;
+      document.getElementById('equipped-count').textContent = `${equippedCount} / 3`;
+
+      const aura = document.getElementById('character-aura');
+      if (aura) {
+        const hasLegendary = Object.values(eq).some(it => it && it.rarity === 'legendary');
+        aura.className = hasLegendary
+          ? 'absolute inset-2 rounded-full bg-amber-500/20 blur-2xl transition-all duration-500 animate-pulse-slow pointer-events-none'
+          : equippedCount > 0
+            ? 'absolute inset-4 rounded-full bg-indigo-500/15 blur-2xl transition-all duration-500 pointer-events-none'
+            : 'absolute inset-4 rounded-full bg-slate-500/5 blur-2xl transition-all duration-500 pointer-events-none';
+      }
+    }
+
+    // 장착 슬롯 렌더링 (투구, 갑옷, 주무기)
+    function renderEquipmentSlots() {
+      const eq = getActiveEquipped();
+      Object.entries(SLOT_META).forEach(([slotKey]) => {
+        const slotEl = document.getElementById(`slot-${slotKey}`);
+        if (!slotEl) return;
+        const item = eq[slotKey];
+
+        // 기본 클래스 초기화
+        slotEl.className = 'equip-slot w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 transition-all duration-200 flex items-center justify-center cursor-pointer relative group';
+
+        if (item) {
+          const rarityInfo = RARITY_META[item.rarity];
+          slotEl.classList.add(rarityInfo.colorClass, 'border-solid');
+          slotEl.innerHTML = `
+            ${getItemIconSVG(item.icon, item.rarity, true)}
+            <span class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-600/90 text-white text-[10px] font-bold hidden group-hover:flex items-center justify-center shadow" title="클릭하여 해제">×</span>
+          `;
+        } else {
+          slotEl.classList.add('border-dashed', 'border-slate-600/80', 'bg-slateDark/70', 'hover:border-amber-400/70');
+          slotEl.innerHTML = getEmptySlotPlaceholderSVG(slotKey);
+        }
+      });
+    }
+
+    // 실시간 능력치(스탯) 및 호버 비교 증감 렌더링
+    function renderStatsSummary() {
+      const activeEq = getActiveEquipped();
+      const currentStats = calculateTotalStats(activeEq);
+      const cp = calculateCombatPower(currentStats);
+      document.getElementById('combat-power').textContent = cp.toLocaleString();
+
+      // 비교 대상 아이템 결정 (호버 아이템 우선, 없으면 인벤토리에서 선택된 아이템)
+      const previewItem = (state.hoveredSource === 'inventory' && state.hoveredItem)
+        ? state.hoveredItem
+        : (state.inspectedSource === 'inventory' ? state.inspectedItem : null);
+
+      let diffStats = null;
+      if (previewItem) {
+        const simulatedEquipped = { ...activeEq, [previewItem.slot]: previewItem };
+        const simulatedStats = calculateTotalStats(simulatedEquipped);
+        diffStats = {};
+        Object.keys(BASE_STATS).forEach(key => {
+          diffStats[key] = simulatedStats[key] - currentStats[key];
+        });
+      }
+
+      const grid = document.getElementById('stats-grid');
+      grid.innerHTML = Object.entries(STAT_LABELS).map(([key, info]) => {
+        const val = currentStats[key];
+        const diff = diffStats ? diffStats[key] : 0;
+
+        let diffBadge = '';
+        if (diff > 0) {
+          diffBadge = `<span class="text-[11px] font-bold text-emerald-400">+${diff}${info.unit}</span>`;
+        } else if (diff < 0) {
+          diffBadge = `<span class="text-[11px] font-bold text-rose-400">${diff}${info.unit}</span>`;
+        }
+
+        return `
+          <div class="bg-slateDark/80 border border-slateBorder/80 rounded-xl p-2.5 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+              <span>${info.icon} ${info.name}</span>
+            </div>
+            <div class="flex items-baseline justify-between gap-1">
+              <span class="text-sm sm:text-base font-bold text-white">${val.toLocaleString()}${info.unit}</span>
+              ${diffBadge}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 인벤토리 그리드 렌더링 (전체 보유 장비 + 어느 장비창 1,2,3에 장착 중인지 배지 표시)
+    function renderInventory() {
+      const grid = document.getElementById('inventory-grid');
+      const countEl = document.getElementById('inventory-count');
+      const activeEq = getActiveEquipped();
+
+      // 등급순 정렬 (전설 > 영웅 > 희귀 > 일반)
+      const sortedInventory = [...state.allItems].sort(
+        (a, b) => RARITY_META[b.rarity].score - RARITY_META[a.rarity].score
+      );
+
+      const filtered = sortedInventory.filter(item => {
+        if (state.activeFilter === 'all') return true;
+        return SLOT_META[item.slot].category === state.activeFilter;
+      });
+
+      countEl.textContent = `${state.allItems.length} / 24`;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-12 flex flex-col items-center justify-center text-slate-500 text-xs gap-2">
+            <svg class="w-8 h-8 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9l6 6M15 9l-6 6"/>
+            </svg>
+            <span>해당 카테고리에 보유 중인 장비가 없습니다.</span>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(item => {
+        const rarityInfo = RARITY_META[item.rarity];
+        const isSelected = state.inspectedItem && state.inspectedItem.id === item.id;
+        const equippedSameSlot = activeEq[item.slot];
+        const isEquippedInCurrent = equippedSameSlot && equippedSameSlot.id === item.id;
+        const isUpgrade = !isEquippedInCurrent && (!equippedSameSlot || getItemScore(item) > getItemScore(equippedSameSlot));
+
+        // 1, 2, 3번 장비창 장착 여부 배지
+        const equippedNums = getEquippedLoadoutNumbers(item.id);
+        const presetBadgesHTML = equippedNums.length > 0
+          ? `<div class="absolute bottom-5 right-1 flex gap-0.5">
+              ${equippedNums.map(num => {
+                const bg = num === 1 ? 'bg-amber-500 text-slate-950' : num === 2 ? 'bg-rose-500 text-white' : 'bg-sky-500 text-slate-950';
+                return `<span class="w-3.5 h-3.5 rounded-sm ${bg} text-[9px] font-extrabold flex items-center justify-center shadow" title="장비창 ${num}에 장착됨">${num}</span>`;
+              }).join('')}
+            </div>`
+          : '';
+
+        return `
+          <div
+            draggable="true"
+            data-item-id="${item.id}"
+            class="inv-item aspect-square rounded-xl border-2 ${rarityInfo.colorClass} ${isSelected ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-abyss' : ''} ${isEquippedInCurrent ? 'brightness-110' : ''} p-1.5 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing relative group transition-transform duration-150 hover:scale-105 select-none"
+          >
+            ${getItemIconSVG(item.icon, item.rarity, false)}
+            <span class="mt-1 text-[10px] text-slate-200 font-medium truncate w-full text-center px-0.5">
+              ${item.name}
+            </span>
+            <span class="absolute top-1 left-1.5 text-[9px] font-bold ${rarityInfo.textClass}">
+              ${SLOT_META[item.slot].label}
+            </span>
+            ${isUpgrade ? `<span class="absolute top-1 right-1.5 text-[10px] font-extrabold text-emerald-400 drop-shadow" title="현재 장비창 착용품보다 높은 전투력">▲</span>` : ''}
+            ${presetBadgesHTML}
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 하단 아이템 상세 및 장착 비교 패널 렌더링
+    function renderComparisonPanel() {
+      const panel = document.getElementById('comparison-panel');
+      const targetItem = state.hoveredItem || state.inspectedItem;
+      const source = state.hoveredItem ? state.hoveredSource : state.inspectedSource;
+      const activeEq = getActiveEquipped();
+
+      if (!targetItem) {
+        panel.innerHTML = `
+          <div class="h-full flex flex-col items-center justify-center text-center text-slate-500 py-8 gap-2">
+            <p class="text-sm font-medium text-slate-400">장비를 선택하거나 마우스를 올려보세요</p>
+            <p class="text-xs">현재 활성화된 장비창의 착용 장비와 스탯을 즉시 비교할 수 있습니다.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const rarityInfo = RARITY_META[targetItem.rarity];
+      const slotInfo = SLOT_META[targetItem.slot];
+      const currentlyEquipped = activeEq[targetItem.slot];
+      const isEquippedInActive = currentlyEquipped && currentlyEquipped.id === targetItem.id;
+      const isComparingWithEquipped = source === 'inventory' && currentlyEquipped && !isEquippedInActive;
+      const equippedNums = getEquippedLoadoutNumbers(targetItem.id);
+
+      // 스탯 비교 행 생성
+      const allStatKeys = new Set([
+        ...Object.keys(targetItem.stats),
+        ...(isComparingWithEquipped ? Object.keys(currentlyEquipped.stats) : [])
+      ]);
+
+      const statRowsHTML = Array.from(allStatKeys).map(key => {
+        const info = STAT_LABELS[key];
+        const newVal = targetItem.stats[key] || 0;
+        const oldVal = isComparingWithEquipped ? (currentlyEquipped.stats[key] || 0) : 0;
+        const diff = source === 'inventory' ? (newVal - oldVal) : 0;
+
+        let diffHTML = '';
+        if (source === 'inventory') {
+          if (diff > 0) {
+            diffHTML = `<span class="text-xs font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-1.5 py-0.5 rounded">+${diff}${info.unit} ▲</span>`;
+          } else if (diff < 0) {
+            diffHTML = `<span class="text-xs font-bold text-rose-400 bg-rose-950/80 border border-rose-500/30 px-1.5 py-0.5 rounded">${diff}${info.unit} ▼</span>`;
+          } else {
+            diffHTML = `<span class="text-xs text-slate-500 px-1.5 py-0.5">-</span>`;
+          }
+        }
+
+        return `
+          <div class="flex items-center justify-between text-xs py-1 border-b border-slateBorder/40 last:border-none">
+            <span class="text-slate-300 flex items-center gap-1.5">${info.icon} ${info.name}</span>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white">${newVal > 0 ? '+' + newVal + info.unit : '0'}</span>
+              ${diffHTML}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      panel.innerHTML = `
+        <div>
+          <!-- 상단 아이템 헤더 -->
+          <div class="flex items-start justify-between gap-3 pb-3 border-b border-slateBorder">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-xl border-2 ${rarityInfo.colorClass} flex items-center justify-center shrink-0">
+                ${getItemIconSVG(targetItem.icon, targetItem.rarity, false)}
+              </div>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded ${rarityInfo.badgeBg}">${rarityInfo.label}</span>
+                  <span class="text-xs text-slate-400">${slotInfo.label}</span>
+                  ${source === 'equipped' ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">장착 중</span>' : ''}
+                </div>
+                <h4 class="text-sm sm:text-base font-bold ${rarityInfo.textClass} mt-0.5">${targetItem.name}</h4>
+              </div>
+            </div>
+
+            <!-- 액션 버튼 -->
+            <div>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded ${rarityInfo.badgeBg}">${rarityInfo.label}</span>
+                <span class="text-xs text-slate-400">${slotInfo.label}</span>
+                ${equippedNums.map(n => `<span class="text-[10px] px-1.5 py-0.5 rounded bg-slateDark text-amber-300 border border-amber-500/40 font-semibold">장비창 ${n} 장착</span>`).join('')}
+              </div>
+              <h4 class="text-sm sm:text-base font-bold ${rarityInfo.textClass} mt-0.5">${targetItem.name}</h4>
+            </div>
+          </div>
+
+          <!-- 액션 버튼 (현재 활성 장비창 기준) -->
+          <div>
+            ${isEquippedInActive
+              ? `<button id="panel-action-unequip" data-slot="${targetItem.slot}" class="px-3.5 py-1.5 rounded-lg bg-rose-600/90 hover:bg-rose-500 text-white font-bold text-xs shadow transition cursor-pointer">${PRESET_META[state.activeLoadout].name} 해제</button>`
+              : `<button id="panel-action-equip" data-id="${targetItem.id}" class="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow transition cursor-pointer">${PRESET_META[state.activeLoadout].name} 장착</button>`
+            }
+          </div>
+        </div>
+
+        <!-- 비교 대상 안내 배너 -->
+        ${isComparingWithEquipped ? `
+          <div class="mt-2.5 px-2.5 py-1.5 rounded-lg bg-slateDark/90 border border-slateBorder flex items-center justify-between text-[11px]">
+            <span class="text-slate-400">${PRESET_META[state.activeLoadout].name} 착용품과 비교:</span>
+            <span class="font-semibold ${RARITY_META[currentlyEquipped.rarity].textClass}">${currentlyEquipped.name}</span>
+          </div>
+        ` : (!isEquippedInActive && !currentlyEquipped ? `
+          <div class="mt-2.5 px-2.5 py-1.5 rounded-lg bg-emerald-950/30 border border-emerald-500/30 text-[11px] text-emerald-300">
+            ${PRESET_META[state.activeLoadout].name}의 비어 있는 [${slotInfo.label}] 슬롯에 즉시 장착할 수 있습니다.
+          </div>
+        ` : '')}
+
+        <!-- 능력치 목록 -->
+          <div class="mt-2.5 bg-obsidian/70 rounded-xl p-2.5 border border-slateBorder/60">
+            ${statRowsHTML}
+          </div>
+        </div>
+
+        <!-- 플레이버 텍스트 -->
+        <p class="mt-3 text-xs text-slate-400 italic leading-relaxed">
+          "${targetItem.desc}"
+        </p>
+      `;
+    }
+
+    function renderAll() {
+      renderLoadoutCards();
+      renderCharacterAvatar();
+      renderEquipmentSlots();
+      renderStatsSummary();
+      renderInventory();
+      renderComparisonPanel();
+    }
+
+    // ==========================================
+    // 5. 이벤트 바인딩 (클릭, 호버, 드래그 앤 드롭, 필터)
+    // ==========================================
+    function setupEventListeners() {
+      // 0) 3개의 장비창(로드아웃) 전환 카드 클릭 이벤트 위임
+      document.getElementById('loadout-cards').addEventListener('click', (e) => {
+        const btn = e.target.closest('.loadout-card-btn');
+        if (!btn) return;
+        const idx = Number(btn.dataset.loadoutIndex);
+        switchLoadout(idx);
+      });
+
+      // 1) 인벤토리 이벤트 위임 (클릭 장착, 호버 비교, 드래그 시작)
+      const invGrid = document.getElementById('inventory-grid');
+
+      invGrid.addEventListener('click', (e) => {
+        const card = e.target.closest('.inv-item');
+        if (!card) return;
+        const itemId = card.dataset.itemId;
+        equipItemById(itemId);
+      });
+
+      invGrid.addEventListener('mouseover', (e) => {
+        const card = e.target.closest('.inv-item');
+        if (!card) return;
+        const item = state.allItems.find(i => i.id === card.dataset.itemId);
+        if (item && state.hoveredItem?.id !== item.id) {
+          state.hoveredItem = item;
+          state.hoveredSource = 'inventory';
+          renderStatsSummary();
+          renderComparisonPanel();
+        }
+      });
+
+      invGrid.addEventListener('mouseleave', () => {
+        if (state.hoveredItem) {
+          state.hoveredItem = null;
+          state.hoveredSource = null;
+          renderStatsSummary();
+          renderComparisonPanel();
+        }
+      });
+
+      invGrid.addEventListener('dragstart', (e) => {
+        const card = e.target.closest('.inv-item');
+        if (!card) return;
+        const item = state.allItems.find(i => i.id === card.dataset.itemId);
+        if (!item) return;
+
+        state.draggedItem = item;
+        e.dataTransfer.setData('text/plain', item.id);
+        e.dataTransfer.effectAllowed = 'move';
+        card.classList.add('opacity-50');
+
+        // 장착 가능한 올바른 슬롯에 은은한 가이드 하이라이트
+        const targetSlotEl = document.getElementById(`slot-${item.slot}`);
+        if (targetSlotEl) {
+          targetSlotEl.classList.add('ring-2', 'ring-emerald-400/70');
+        }
+      });
+
+      invGrid.addEventListener('dragend', (e) => {
+        const card = e.target.closest('.inv-item');
+        if (card) card.classList.remove('opacity-50');
+        state.draggedItem = null;
+
+        // 모든 슬롯 하이라이트 초기화
+        document.querySelectorAll('.equip-slot').forEach(slot => {
+          slot.classList.remove('ring-2', 'ring-emerald-400/70', 'slot-drag-valid', 'slot-drag-invalid');
+        });
+      });
+
+      // 2) 장착 슬롯 이벤트 (클릭 해제, 호버 상세, 드래그 오버/드롭 검증)
+      document.querySelectorAll('.equip-slot').forEach(slotEl => {
+        const slotKey = slotEl.dataset.slot;
+
+        slotEl.addEventListener('click', () => {
+          if (getActiveEquipped()[slotKey]) {
+            unequipSlot(slotKey);
+          } else {
+            showToast(`비어 있는 [${SLOT_META[slotKey].label}] 슬롯입니다.`, 'info');
+          }
+        });
+
+        slotEl.addEventListener('mouseenter', () => {
+          const item = getActiveEquipped()[slotKey];
+          if (item) {
+            state.hoveredItem = item;
+            state.hoveredSource = 'equipped';
+            renderComparisonPanel();
+          }
+        });
+
+        slotEl.addEventListener('mouseleave', () => {
+          if (state.hoveredSource === 'equipped') {
+            state.hoveredItem = null;
+            state.hoveredSource = null;
+            renderComparisonPanel();
+          }
+        });
+
+        // 드래그 오버: 부위 일치 여부에 따라 시각적 피드백(녹색/빨간색 경고)
+        slotEl.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          if (!state.draggedItem) return;
+
+          if (state.draggedItem.slot === slotKey) {
+            e.dataTransfer.dropEffect = 'move';
+            slotEl.classList.add('slot-drag-valid');
+            slotEl.classList.remove('slot-drag-invalid');
+          } else {
+            e.dataTransfer.dropEffect = 'none';
+            slotEl.classList.add('slot-drag-invalid');
+            slotEl.classList.remove('slot-drag-valid');
+          }
+        });
+
+        slotEl.addEventListener('dragleave', () => {
+          slotEl.classList.remove('slot-drag-valid', 'slot-drag-invalid');
+        });
+
+        slotEl.addEventListener('drop', (e) => {
+          e.preventDefault();
+          slotEl.classList.remove('slot-drag-valid', 'slot-drag-invalid');
+          const itemId = e.dataTransfer.getData('text/plain');
+          const item = state.allItems.find(i => i.id === itemId);
+          if (!item) return;
+
+          if (item.slot === slotKey) {
+            equipItemById(item.id);
+          } else {
+            // 부위 불일치 시 경고 흔들림 및 토스트 피드백
+            slotEl.classList.add('slot-drag-invalid');
+            setTimeout(() => slotEl.classList.remove('slot-drag-invalid'), 400);
+            showToast(`장착 불가: [${SLOT_META[item.slot].label}] 전용 장비입니다!`, 'error');
+          }
+        });
+      });
+
+      // 3) 하단 상세 패널 내 버튼 이벤트 위임
+      document.getElementById('comparison-panel').addEventListener('click', (e) => {
+        const equipBtn = e.target.closest('#panel-action-equip');
+        if (equipBtn) {
+          equipItemById(equipBtn.dataset.id);
+          return;
+        }
+        const unequipBtn = e.target.closest('#panel-action-unequip');
+        if (unequipBtn) {
+          unequipSlot(unequipBtn.dataset.slot);
+        }
+      });
+
+      // 4) 카테고리 필터 탭
+      document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.filter-tab').forEach(t => {
+            t.classList.remove('bg-slateDark', 'text-amber-300', 'border', 'border-amber-500/40');
+            t.classList.add('text-slate-400');
+          });
+          tab.classList.add('bg-slateDark', 'text-amber-300', 'border', 'border-amber-500/40');
+          tab.classList.remove('text-slate-400');
+
+          state.activeFilter = tab.dataset.filter;
+          renderInventory();
+        });
+      });
+
+      // 5) 최적 자동 장착 및 전체 해제 버튼
+      document.getElementById('btn-auto-equip').addEventListener('click', autoEquipBest);
+      document.getElementById('btn-unequip-all').addEventListener('click', unequipAll);
+    }
+
+    // ==========================================
+    // 6. Three.js 인터랙티브 3D 캐릭터 & 장비 렌더러
+    // ==========================================
+    function init3DCharacterScene() {
+      const container = document.getElementById('character-3d-container');
+      const canvas = document.getElementById('character-3d-canvas');
+      if (!container || !canvas || typeof THREE === 'undefined') return;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(38, container.clientWidth / container.clientHeight, 0.1, 100);
+      camera.position.set(0, 1.35, 4.6);
+      camera.lookAt(0, 1.15, 0);
+
+      const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.25;
+
+      // 조명 설정 (다크 판타지 3점 조명)
+      const ambientLight = new THREE.AmbientLight(0x64748b, 1.1);
+      scene.add(ambientLight);
+
+      const keyLight = new THREE.DirectionalLight(0xfffbeb, 1.8);
+      keyLight.position.set(3, 5, 4);
+      scene.add(keyLight);
+
+      const rimLight = new THREE.PointLight(0xf59e0b, 1.6, 10);
+      rimLight.position.set(-2.5, 2.5, -2.5);
+      scene.add(rimLight);
+
+      const fillLight = new THREE.PointLight(0x38bdf8, 0.9, 8);
+      fillLight.position.set(2.5, 1.0, -2);
+      scene.add(fillLight);
+
+      // 바닥 3D 마법진 링
+      const ringGroup = new THREE.Group();
+      const outerRing = new THREE.Mesh(
+        new THREE.RingGeometry(1.05, 1.12, 48),
+        new THREE.MeshBasicMaterial({ color: 0xd97706, side: THREE.DoubleSide, transparent: true, opacity: 0.45 })
+      );
+      outerRing.rotation.x = -Math.PI / 2;
+      ringGroup.add(outerRing);
+
+      const innerRing = new THREE.Mesh(
+        new THREE.RingGeometry(0.72, 0.76, 36),
+        new THREE.MeshBasicMaterial({ color: 0xfbbf24, side: THREE.DoubleSide, transparent: true, opacity: 0.3 })
+      );
+      innerRing.rotation.x = -Math.PI / 2;
+      ringGroup.add(innerRing);
+      scene.add(ringGroup);
+
+      // 캐릭터 본체 그룹
+      const characterGroup = new THREE.Group();
+      scene.add(characterGroup);
+
+      // 기본 재질
+      const baseArmorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.55, metalness: 0.45 });
+      const darkClothMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.85, metalness: 0.1 });
+      const visorGlowMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+
+      // 다리 & 부츠
+      [-0.22, 0.22].forEach(xPos => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.92, 14), baseArmorMat);
+        leg.position.set(xPos, 0.46, 0);
+        characterGroup.add(leg);
+
+        const boot = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.14, 0.32), baseArmorMat);
+        boot.position.set(xPos, 0.07, 0.05);
+        characterGroup.add(boot);
+      });
+
+      // 몸통 (기본 튜닉)
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.27, 0.86, 16), darkClothMat);
+      torso.position.set(0, 1.32, 0);
+      characterGroup.add(torso);
+
+      // 머리 (기본 두상)
+      const headGroup = new THREE.Group();
+      headGroup.position.set(0, 2.02, 0);
+      const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.24, 20, 20), baseArmorMat);
+      headGroup.add(headMesh);
+
+      const eyeBar = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.035, 0.06), visorGlowMat);
+      eyeBar.position.set(0, 0.02, 0.21);
+      headGroup.add(eyeBar);
+      characterGroup.add(headGroup);
+
+      // 양팔
+      const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.085, 0.72, 12), baseArmorMat);
+      leftArm.position.set(-0.48, 1.35, 0);
+      leftArm.rotation.z = 0.18;
+      characterGroup.add(leftArm);
+
+      const rightArmGroup = new THREE.Group();
+      rightArmGroup.position.set(0.46, 1.65, 0);
+      const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.085, 0.72, 12), baseArmorMat);
+      rightArm.position.set(0.06, -0.32, 0.08);
+      rightArm.rotation.set(-0.35, 0, -0.2);
+      rightArmGroup.add(rightArm);
+      characterGroup.add(rightArmGroup);
+
+      // ==========================================
+      // 동적 장착 3D 장비 파츠 (투구, 갑옷, 주무기)
+      // ==========================================
+      const rarityPalette = {
+        common: { main: 0x64748b, accent: 0x94a3b8, emissive: 0x000000 },
+        rare: { main: 0x2563eb, accent: 0x60a5fa, emissive: 0x1d4ed8 },
+        epic: { main: 0x7e22ce, accent: 0xd8b4fe, emissive: 0x6b21a8 },
+        legendary: { main: 0xd97706, accent: 0xfef08a, emissive: 0xb45309 }
+      };
+
+      // 1) 3D 투구 파츠
+      const helmetPart = new THREE.Group();
+      const helmDome = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.25, 0.27, 0.42, 18),
+        new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.85, roughness: 0.2 })
+      );
+      helmetPart.add(helmDome);
+
+      const helmCrest = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, 0.24, 0.42),
+        new THREE.MeshStandardMaterial({ color: 0xfef08a, metalness: 0.9, roughness: 0.15 })
+      );
+      helmCrest.position.set(0, 0.22, -0.02);
+      helmetPart.add(helmCrest);
+
+      [-1, 1].forEach(dir => {
+        const horn = new THREE.Mesh(
+          new THREE.ConeGeometry(0.055, 0.34, 10),
+          new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.85, roughness: 0.2 })
+        );
+        horn.position.set(dir * 0.28, 0.18, 0);
+        horn.rotation.z = -dir * 0.55;
+        helmetPart.add(horn);
+      });
+      helmetPart.visible = false;
+      headGroup.add(helmetPart);
+
+      // 2) 3D 갑옷 & 견갑 & 망토 파츠
+      const armorPart = new THREE.Group();
+      const chestPlate = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.41, 0.31, 0.84, 16),
+        new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.8, roughness: 0.25 })
+      );
+      chestPlate.position.set(0, 1.34, 0);
+      armorPart.add(chestPlate);
+
+      const coreGem = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.09, 0),
+        new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xf59e0b, emissiveIntensity: 0.9 })
+      );
+      coreGem.position.set(0, 1.44, 0.39);
+      armorPart.add(coreGem);
+
+      // 양쪽 견갑(어깨 갑옷)
+      [-0.48, 0.48].forEach(xPos => {
+        const pauldron = new THREE.Mesh(
+          new THREE.SphereGeometry(0.21, 14, 14, 0, Math.PI * 2, 0, Math.PI * 0.6),
+          new THREE.MeshStandardMaterial({ color: 0xb45309, metalness: 0.85, roughness: 0.2 })
+        );
+        pauldron.position.set(xPos, 1.66, 0);
+        pauldron.rotation.z = xPos < 0 ? 0.35 : -0.35;
+        armorPart.add(pauldron);
+      });
+
+      // 망토
+      const capeMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.76, 1.25, 0.04),
+        new THREE.MeshStandardMaterial({ color: 0x31102f, roughness: 0.85 })
+      );
+      capeMesh.position.set(0, 1.05, -0.34);
+      capeMesh.rotation.x = 0.14;
+      armorPart.add(capeMesh);
+
+      armorPart.visible = false;
+      characterGroup.add(armorPart);
+
+      // 3) 3D 주무기 (대검) 파츠
+      const weaponPart = new THREE.Group();
+      weaponPart.position.set(0.14, -0.62, 0.24);
+      weaponPart.rotation.set(0.45, 0.2, -0.25);
+
+      const grip = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.032, 0.032, 0.34, 10),
+        new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.8 })
+      );
+      weaponPart.add(grip);
+
+      const crossGuard = new THREE.Mesh(
+        new THREE.BoxGeometry(0.42, 0.06, 0.09),
+        new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.2 })
+      );
+      crossGuard.position.set(0, 0.18, 0);
+      weaponPart.add(crossGuard);
+
+      const blade = new THREE.Mesh(
+        new THREE.BoxGeometry(0.13, 1.38, 0.028),
+        new THREE.MeshStandardMaterial({
+          color: 0xf8fafc,
+          metalness: 0.92,
+          roughness: 0.12,
+          emissive: 0xd97706,
+          emissiveIntensity: 0.35
+        })
+      );
+      blade.position.set(0, 0.88, 0);
+      weaponPart.add(blade);
+
+      const bladeTip = new THREE.Mesh(
+        new THREE.ConeGeometry(0.092, 0.24, 4),
+        new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.92, roughness: 0.12 })
+      );
+      bladeTip.position.set(0, 1.69, 0);
+      bladeTip.rotation.y = Math.PI / 4;
+      weaponPart.add(bladeTip);
+
+      weaponPart.visible = false;
+      rightArmGroup.add(weaponPart);
+
+      // 장비 상태에 따른 3D 파츠 가시성 및 등급 재질 업데이트 함수
+      window.updateCharacter3DEquipment = function (eq) {
+        helmetPart.visible = !!eq.helmet;
+        if (eq.helmet) {
+          const pal = rarityPalette[eq.helmet.rarity] || rarityPalette.common;
+          helmDome.material.color.setHex(pal.main);
+          helmDome.material.emissive.setHex(pal.emissive);
+          helmDome.material.emissiveIntensity = 0.25;
+          helmCrest.material.color.setHex(pal.accent);
+        }
+
+        armorPart.visible = !!eq.armor;
+        if (eq.armor) {
+          const pal = rarityPalette[eq.armor.rarity] || rarityPalette.common;
+          chestPlate.material.color.setHex(pal.main);
+          chestPlate.material.emissive.setHex(pal.emissive);
+          chestPlate.material.emissiveIntensity = 0.22;
+          coreGem.material.color.setHex(pal.accent);
+          coreGem.material.emissive.setHex(pal.main);
+        }
+
+        weaponPart.visible = !!eq.mainWeapon;
+        if (eq.mainWeapon) {
+          const pal = rarityPalette[eq.mainWeapon.rarity] || rarityPalette.common;
+          crossGuard.material.color.setHex(pal.main);
+          blade.material.emissive.setHex(pal.emissive);
+          blade.material.emissiveIntensity = eq.mainWeapon.rarity === 'legendary' ? 0.55 : 0.25;
+        }
+      };
+
+      // 마우스 / 터치 드래그로 3D 캐릭터 360도 회전
+      let isDragging = false;
+      let prevX = 0;
+      let targetRotationY = 0.25;
+
+      const onPointerDown = (clientX) => {
+        isDragging = true;
+        prevX = clientX;
+      };
+      const onPointerMove = (clientX) => {
+        if (!isDragging) return;
+        const deltaX = clientX - prevX;
+        prevX = clientX;
+        targetRotationY += deltaX * 0.015;
+      };
+      const onPointerUp = () => {
+        isDragging = false;
+      };
+
+      container.addEventListener('mousedown', (e) => onPointerDown(e.clientX));
+      window.addEventListener('mousemove', (e) => onPointerMove(e.clientX));
+      window.addEventListener('mouseup', onPointerUp);
+
+      container.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 0) onPointerDown(e.touches[0].clientX);
+      }, { passive: true });
+      window.addEventListener('touchmove', (e) => {
+        if (isDragging && e.touches.length > 0) onPointerMove(e.touches[0].clientX);
+      }, { passive: true });
+      window.addEventListener('touchend', onPointerUp);
+
+      // 반응형 리사이즈 처리
+      const handleResize = () => {
+        if (!container.clientWidth || !container.clientHeight) return;
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+      };
+      window.addEventListener('resize', handleResize);
+
+      // 애니메이션 루프 (부유 모션 + 부드러운 회전 + 마법진 회전)
+      const clock = new THREE.Clock();
+      function animate() {
+        requestAnimationFrame(animate);
+        const elapsed = clock.getElapsedTime();
+
+        if (!isDragging) {
+          targetRotationY += 0.004;
+        }
+        characterGroup.rotation.y += (targetRotationY - characterGroup.rotation.y) * 0.1;
+        characterGroup.position.y = Math.sin(elapsed * 2.2) * 0.045;
+        ringGroup.rotation.y = elapsed * 0.5;
+
+        renderer.render(scene, camera);
+      }
+      animate();
+    }
+
+    // 앱 초기화 실행
+    window.onload = function () {
+      init3DCharacterScene();
+      initDefaultEquipment();
+      setupEventListeners();
+      renderAll();
+    };
+  </script>
+</body>
+</html>

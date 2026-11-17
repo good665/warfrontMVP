@@ -1,0 +1,27 @@
+{
+  "backup": "C:\\Users\\good6\\AppData\\Local\\Temp\\Warfront-companion-attacks-backup-20261108-122837",
+  "files": {
+    "script\\RetroFantasyScene.cs": "71f073286f514b3307a79f41d63049af0f85070b7367d964e3121ccfaa28e259",
+    "script\\RetroSquadCombat.cs": "6c7141313d9c493470e3d3f57a6f2b28480b3f1094be20765d05f13cf7cc0ab0",
+    "script\\RetroSquadCompanions.cs": "c52764d9b6421bd3cd4c538e15374449db7a0dd6a9477d1f7b3611ea01a7181c",
+    "script\\FantasyTownView.cs": "5602a7dbf39fc04136a3916421faaa9254316733a27cb95e163930d6d4e0949f",
+    "script\\MmoModels.cs": "9e162ae88c32b09e5ae318885e247fd332d7f0ac0785c947d5236e072850ac70",
+    "Editor\\CompanionEquipmentBuilder.cs": "8392f08778aa9dc289f688e96a5c13a50e80634c3d6d012edaafd457ed99a82c",
+    "Editor\\CompanionAttackChecks.cs": "9a15a5547fb1cc0574a8fad51d14e9cb9e34ffdad09b80c00b995f3a5eaaf349",
+    "Resources\\SquadEquipment\\Arrow.prefab": "8cbee57eb95c69d4aa3f55487b43ad792e521564c012d1848d92450b88617079",
+    "Resources\\SquadEquipment\\Arrow.prefab.meta": "a1c6068cb81e18fccfa5fcfe54c5c7eb4c1b803f9744c5f01ae06206e3a9cf2b",
+    "Resources\\SquadEquipment\\ArrowFeather.mat": "faa43bea37e3bb45729ee6e12270c25e111d6bea741a97bb8e9305bc031d96ed",
+    "Resources\\SquadEquipment\\ArrowFeather.mat.meta": "0ce4526bda44e2f1c770eac22b8d93711b45f5ede97a5ef723c67a742841e428",
+    "Resources\\SquadEquipment\\ArrowSteel.mat": "965ea2bdbc48cef739c191f324163b44ea77841fcd6805c41f1817c70434646c",
+    "Resources\\SquadEquipment\\ArrowSteel.mat.meta": "0cff6dc3dfc52b41b0cc8babfdaaa2b0a4bfb5a189144790806deb955a9a6007",
+    "Resources\\SquadEquipment\\Bow.prefab": "ca27e24ae7b664fe7f43678f1cdf347d86967eeee1d1a39e321e74f6b33ce953",
+    "Resources\\SquadEquipment\\Bow.prefab.meta": "b168ae0adc924353cb5f30f9b3e23ffad0e062080bdde8cf536436c171e6638f",
+    "Resources\\SquadEquipment\\BowDraw.anim": "c6a00cfcfaef7050f3d00550934ed873066fcf897068274fe232f15a69c1985a",
+    "Resources\\SquadEquipment\\BowDraw.anim.meta": "bfd10bb2042d5769731e201e19795cb045d1db16aec90051dd02b6e73b63b4eb",
+    "Resources\\SquadEquipment\\BowString.mat": "2d0b91ceb5aa141e3914c51aac5095b15ad7a30df5031a5ba5327805c39e3c73",
+    "Resources\\SquadEquipment\\BowString.mat.meta": "366756c3cb6ad1e5555206040abf87e0e7968439b248903435e2fe87fa4aed9f",
+    "Resources\\SquadEquipment\\BowWood.mat": "9fe10c920bf917da581696620b09cec8632b4c4db87421ffdee08efb48b3bfdb",
+    "Resources\\SquadEquipment\\BowWood.mat.meta": "acdba19a1daab10120739df4dbfd4cfefbf445502c4a2e3d29642d582f25e02e"
+  },
+  "tested_hash_match": true
+}

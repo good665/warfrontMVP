@@ -1,0 +1,18 @@
+{
+  "active_source_sha256": {
+    "CipherInteraction.cs": "fe026a77f1f248952072bbc365d16223e019ad439c6e6d25e4cb80da86cba663",
+    "TrainingLeagueView.cs": "ae650793a52e82951a7cd7106d57382b1a210a124d7ddf7962b0e3a66ae37766",
+    "TrainingView.cs": "d3fdc0294c2902cff6ab578c2af990e4ba40eaa07b64f207d4a76a050da89cf4"
+  },
+  "portable_checks": 20,
+  "unity_pointer_route_checks": 5,
+  "widget_checks": 16,
+  "pixel_checks": 5,
+  "game_regression_checks": 184,
+  "server_replay_parity_runs": 3,
+  "compile_errors": 0,
+  "existing_warnings": 1,
+  "review": "No blockers after fast-click correction",
+  "manual_visual_playtest": false,
+  "device_build": false
+}

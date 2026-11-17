@@ -1,0 +1,14 @@
+Human: 0 foot vertices fitted; height/topology/rig preserved; animation samples valid
+Orc: 0 foot vertices fitted; height/topology/rig preserved; animation samples valid
+dog: 0 foot vertices fitted; height/topology/rig preserved; animation samples valid
+dragon: 0 foot vertices fitted; height/topology/rig preserved; animation samples valid
+goat: 0 foot vertices fitted; height/topology/rig preserved; animation samples valid
+horse: 0 foot vertices fitted; height/topology/rig preserved; animation samples valid
+monkey: 0 foot vertices fitted; height/topology/rig preserved; animation samples valid
+ox: 0 foot vertices fitted; height/topology/rig preserved; animation samples valid
+pig: 0 foot vertices fitted; height/topology/rig preserved; animation samples valid
+rabbit: 0 foot vertices fitted; height/topology/rig preserved; animation samples valid
+rat: 0 foot vertices fitted; height/topology/rig preserved; animation samples valid
+rooster: 0 foot vertices fitted; height/topology/rig preserved; animation samples valid
+snake: 0 foot vertices fitted; height/topology/rig preserved; animation samples valid
+tiger: 0 foot vertices fitted; height/topology/rig preserved; animation samples valid

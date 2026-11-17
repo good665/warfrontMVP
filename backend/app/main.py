@@ -19,6 +19,10 @@ from .online_rooms import rooms
 from .online_routes import router as online_router
 from .experience_routes import router as experience_router
 from .training_routes import router as training_router
+from .mmo_routes import router as mmo_router
+from .mmo_world import world as mmo_world
+from .squad_routes import router as squad_router
+from .squad_rooms import squad_rooms
 from .experience import safe_record_event
 from .schemas import (
     AdStaminaResponse,
@@ -42,9 +46,13 @@ async def lifespan(_: FastAPI):
     if settings.auto_create_tables:
         Base.metadata.create_all(bind=engine)
     rooms.start()
+    mmo_world.start()
+    squad_rooms.start()
     try:
         yield
     finally:
+        await squad_rooms.stop()
+        await mmo_world.stop()
         await rooms.stop()
 
 
@@ -55,6 +63,9 @@ app = FastAPI(title="Warfront API", version="0.3.0", lifespan=lifespan,
 app.include_router(online_router)
 app.include_router(experience_router)
 app.include_router(training_router)
+# Retired MMO worlds/equipment keep their stored data and maintenance modules,
+# but are no longer exposed as playable API routes.
+app.include_router(squad_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.origins,
@@ -163,6 +174,10 @@ def readiness(db: Session = Depends(get_db)):
         raise err(status.HTTP_503_SERVICE_UNAVAILABLE, "room_loop_unavailable")
     if time.monotonic() - rooms.last_loop_tick > 5:
         raise err(status.HTTP_503_SERVICE_UNAVAILABLE, "room_loop_stalled")
+    if not mmo_world.ready():
+        raise err(status.HTTP_503_SERVICE_UNAVAILABLE, "mmo_loop_unavailable")
+    if not squad_rooms.ready():
+        raise err(status.HTTP_503_SERVICE_UNAVAILABLE, "squad_loop_unavailable")
     return {"status": "ready", "version": app.version, "stage_seconds": 60, "room_sizes": [1, 3]}
 
 

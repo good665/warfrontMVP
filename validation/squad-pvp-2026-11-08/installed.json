@@ -1,0 +1,20 @@
+{
+  "backup": "C:\\Users\\good6\\Documents\\ChatGPT\\멀티플랫폼 게임 홈페이지 사이트\\.tools\\squad-pvp\\backup-20261108-110320",
+  "count": 13,
+  "files": {
+    "script/MmoView.cs": "1a63b61065ecb2b47c9a6b2a53521b7d2909e2e4dbf55af7269f0e1b5dd745a0",
+    "script/DungeonFirstPersonView.cs": "ed9473301c3fd66694cc9ba4dccd868740ca759391aff61f06f0e23f99ea237f",
+    "script/FantasyTownView.cs": "55301f361daf48f36ee92fd83c8c9e92ce4497c2b0c8c729875d850e865d201a",
+    "script/RetroFantasyScene.cs": "8b63e16d831a4507c9b3ad83e5a4902d9be996cbe9d7a18cf807a7be427a9efc",
+    "script/MmoAdventureUi.cs": "34d0251186c36fb74de2bd79b307f80e750db70342e78bd120834a852545afa5",
+    "script/MmoControlSettings.cs": "b127b256387fff517db9b1ab7e532e79581cfc36b284973f4c81a8cdd738b88e",
+    "script/MmoTargetLock.cs": "adfba6fee3f43fa02690923b231d2d2e145f8db5cb7a0c44f721e1efe36e42d5",
+    "script/SquadModels.cs": "d20e218ebab8aea0ffbe33e7fdbdd763988dea0e5e2fe3ae3c0654ae9714ddf3",
+    "script/SquadApi.cs": "a059dd96e4b33a1562048c60514d416011bb6bb03b311f59102cbbec7cfb313a",
+    "script/SquadView.cs": "fdd7897cdb0756cc443b4ccebfbb2113da2e652ac71677350d09d728f9e9d0c3",
+    "script/SquadLifecycle.cs": "01da7ebbe5e737708ac057dd03e4e372df92d240f1c4dbcc33481ce2e9133a94",
+    "Editor/SquadChecks.cs": "732d9f04761e4ce6a65a5e4a80bc83ec029bdf6a7805b175aa511a37e68d1dd4",
+    "Editor/SquadSceneChecks.cs": "5591d31b64d4a1fc9c0ac909de021c9281ee4db3b6c3949fe127bc811928fd73"
+  },
+  "preserved_existing_meta": true
+}

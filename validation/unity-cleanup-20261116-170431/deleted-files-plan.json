@@ -1,0 +1,137 @@
+﻿[
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Library\\Bee",
+        "Bytes":  6883252437,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Library\\BurstCache",
+        "Bytes":  220811182,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Library\\Search",
+        "Bytes":  203930916,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Library\\ShaderCache",
+        "Bytes":  112052756,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Library\\AI.CoreGraph",
+        "Bytes":  30610718,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Library\\BuildPlayerData",
+        "Bytes":  2918280,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Library\\PlayerDataCache",
+        "Bytes":  45992741,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Library\\SplashScreenCache",
+        "Bytes":  2810324,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Logs",
+        "Bytes":  9148894,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\Warfront Device Test_BurstDebugInformation_DoNotShip",
+        "Bytes":  112612,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-BaseLobbyTest_BackUpThisFolder_ButDontShipItWithYourGame",
+        "Bytes":  773948527,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-BaseLobby_BackUpThisFolder_ButDontShipItWithYourGame",
+        "Bytes":  773848555,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-DeviceTest_BackUpThisFolder_ButDontShipItWithYourGame",
+        "Bytes":  808787846,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-HudInputTest_BackUpThisFolder_ButDontShipItWithYourGame",
+        "Bytes":  773836579,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-NetworkTest_BackUpThisFolder_ButDontShipItWithYourGame",
+        "Bytes":  773802982,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-PixelArt_BackUpThisFolder_ButDontShipItWithYourGame",
+        "Bytes":  778007492,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-PlayerGrowth_BackUpThisFolder_ButDontShipItWithYourGame",
+        "Bytes":  777963310,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-SimpleMatch_BackUpThisFolder_ButDontShipItWithYourGame",
+        "Bytes":  773853979,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-WeeklyTraining_BackUpThisFolder_ButDontShipItWithYourGame",
+        "Bytes":  775408599,
+        "Directory":  true
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-BaseLobby.apk",
+        "Bytes":  79804654,
+        "Directory":  false
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-BaseLobbyTest.apk",
+        "Bytes":  60525399,
+        "Directory":  false
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-DeviceTest.apk",
+        "Bytes":  56282633,
+        "Directory":  false
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-HudInputTest.apk",
+        "Bytes":  56282521,
+        "Directory":  false
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-NetworkTest.apk",
+        "Bytes":  56282521,
+        "Directory":  false
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-PlayerGrowth.apk",
+        "Bytes":  59532843,
+        "Directory":  false
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-SimpleMatch.apk",
+        "Bytes":  79802082,
+        "Directory":  false
+    },
+    {
+        "Path":  "C:\\Users\\good6\\WarfrontMVP\\Build\\Android\\WarfrontMVP-WeeklyTraining.apk",
+        "Bytes":  59433427,
+        "Directory":  false
+    }
+]

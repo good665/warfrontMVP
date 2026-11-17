@@ -1,0 +1,20 @@
+{
+  "native_player_hurt_checks": "PASS",
+  "existing_Unity_regressions": "PASS",
+  "actual_isolated_server_monster_damage": "PASS",
+  "observed_HP": [
+    100,
+    80
+  ],
+  "normal_impact_recovered_renders": "PASS",
+  "hurt_audio_PCM": "PASS",
+  "physical_audio_listening": "NOT_RUN",
+  "duplicate_initial_heal_other_maxHP_suppression": "PASS",
+  "pose_camera_decay_reset": "PASS",
+  "installed_files": 3,
+  "installed_hash_match": true,
+  "server_rules_changed": false,
+  "fixture_account_cleaned": true,
+  "new_APK": "NOT_BUILT",
+  "mobile_hardware": "NOT_RUN"
+}

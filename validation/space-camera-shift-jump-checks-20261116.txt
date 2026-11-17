@@ -1,0 +1,1 @@
+PASS: click mapping, edge drag clamping/capture, own-marker follow, new-battle reset, actual viewport corner alignment at 3 zoom levels, panned viewport alignment; Space recenter restores hero follow without jump/dodge or pointer leak.

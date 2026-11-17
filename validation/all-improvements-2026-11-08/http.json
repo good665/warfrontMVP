@@ -1,0 +1,9 @@
+{
+  "url": "http://127.0.0.1:8000",
+  "readiness": "PASS",
+  "authenticated_quest_contract": "PASS",
+  "enemy_warning_contract": "PASS",
+  "SQL_claim_persistence": "PASS",
+  "duplicate_claim_rejected": "PASS",
+  "disposable_account_cleanup": true
+}

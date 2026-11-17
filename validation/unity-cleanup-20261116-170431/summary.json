@@ -1,0 +1,14 @@
+﻿{
+    "BeforeBytes":  18342407099,
+    "AfterBytes":  3313362290,
+    "FreedBytes":  15029044809,
+    "BeforeGiB":  17.083,
+    "AfterGiB":  3.086,
+    "FreedGiB":  13.997,
+    "PreservedApk":  "WarfrontMVP-PixelArt.apk",
+    "ApkMiB":  61.8,
+    "PreservedSourceFiles":  1247,
+    "SourceHashesMatch":  true,
+    "DeletedTargets":  27,
+    "ReportFolder":  "C:\\Users\\good6\\Documents\\ChatGPT\\멀티플랫폼 게임 홈페이지 사이트\\validation\\unity-cleanup-20261116-170431"
+}

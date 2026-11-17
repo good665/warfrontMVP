@@ -1,0 +1,1 @@
+PASS: 12 base prefabs; 20334 vertices; palette URP materials; basic-part bones/normalized weights/bindposes; 84 animation samples deform; no actor root motion; RTS prefab switching; catalog rendered.

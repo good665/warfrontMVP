@@ -1,0 +1,10 @@
+﻿from pathlib import Path
+p=Path('pooling-work/RetroSquadCompanions.cs')
+s=p.read_text(encoding='utf-8-sig').replace('var present=new HashSet<int>();','var present=projectileIds;present.Clear();').replace('arrow=Instantiate(arrowPrefab,field.transform);arrow.name="Authoritative arrow "+p.id;SetLayer(arrow);','arrow=RentCombatVisual(arrowPool,arrowPrefab,"Authoritative arrow "+p.id);').replace('var expired=new List<int>();','var expired=expiredProjectileIds;expired.Clear();').replace('RemoveOwned(flyingArrows[id]);','ReturnCombatVisual(arrowPool,flyingArrows[id]);')
+p.write_text(s,encoding='utf-8-sig')
+p=Path('pooling-work/RetroSquadCombat.cs')
+s=p.read_text(encoding='utf-8-sig').replace('var present=new HashSet<int>();','var present=bombIds;present.Clear();').replace('node=Instantiate(squadGrenade,field.transform);node.name="Server bomb "+b.id;SetLayer(node);','node=RentCombatVisual(bombPool,squadGrenade,"Server bomb "+b.id);').replace('CombatLine("Bomb landing and blast "+b.id,field.transform,49,b.team==ownTeam?new Color(1,.75f,.2f):new Color(1,.25f,.12f),.055f)','RentBlastRing("Bomb landing and blast "+b.id,b.team==ownTeam?new Color(1,.75f,.2f):new Color(1,.25f,.12f))').replace('var gone=new List<int>();','var gone=expiredBombIds;gone.Clear();').replace('RemoveOwned(squadBombs[id]);RemoveOwned(squadBlastRings[id].gameObject);','ReturnCombatVisual(bombPool,squadBombs[id]);ReturnCombatVisual(blastRingPool,squadBlastRings[id].gameObject);')
+p.write_text(s,encoding='utf-8-sig')
+p=Path('pooling-work/RetroFantasyScene.cs')
+s=p.read_text(encoding='utf-8-sig').replace('if(field!=null)RemoveOwned(field);','ReturnFieldCombatVisuals();\n                if(field!=null)RemoveOwned(field);')
+p.write_text(s,encoding='utf-8-sig')

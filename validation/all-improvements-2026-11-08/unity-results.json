@@ -1,0 +1,10 @@
+{
+  "checks": {
+    "exit_code": 0,
+    "passed": true
+  },
+  "play-mode": {
+    "exit_code": 0,
+    "passed": true
+  }
+}

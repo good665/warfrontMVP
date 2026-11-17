@@ -1,0 +1,21 @@
+{
+  "active_project": "C:\\Users\\good6\\WarfrontMVP",
+  "runtime_compile_errors": 0,
+  "runtime_compile_existing_warnings": 1,
+  "widget_checks": 16,
+  "existing_pixel_checks": 5,
+  "game_regression_checks": 184,
+  "active_editor_checks": true,
+  "widget_import_readable": true,
+  "source_sha256": {
+    "C:\\Users\\good6\\WarfrontMVP\\Assets\\script\\ArenaView.cs": "51265448b2aade55d57706ccd35acbad547e5d4d644a8d1c54fd91a02158bfd6",
+    "C:\\Users\\good6\\WarfrontMVP\\Assets\\script\\GameBootstrap.cs": "b5a8c3862b33d1d62800d7269a9b9ac8382c98a8cf64fdcb8b10d5a45dce0b26",
+    "C:\\Users\\good6\\WarfrontMVP\\Assets\\script\\LobbyView.cs": "48af0eb7510e8c3332817f068fe78f0652ad235f51a847f496e31d9430ad9be1",
+    "C:\\Users\\good6\\WarfrontMVP\\Assets\\Editor\\PixelArtImport.cs": "56b74a267f49ea1c231edd0b80ed604c1687e58c9adc77619d7864a3ab1503de",
+    "C:\\Users\\good6\\WarfrontMVP\\Assets\\script\\TrainingView.cs": "aaadf6a12e7510dc26b18b18d2faf9beecc2681f1247a34577c8c2c5b2fc669b",
+    "C:\\Users\\good6\\WarfrontMVP\\Assets\\script\\WidgetArtView.cs": "e1adaa0bd6c182f027110b899ad51dd2f9bc8c93487ef0f9a13588317783190f"
+  },
+  "backup": ".tools/widget-ui/backup",
+  "visual_verification": "Preview window opens, but computer-use capture did not expose its contents; visual layout verification remains incomplete.",
+  "device_build_or_playtest": false
+}

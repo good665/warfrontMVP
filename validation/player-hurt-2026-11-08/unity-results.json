@@ -1,0 +1,10 @@
+{
+  "checks": {
+    "passed": true,
+    "exit_code": 0
+  },
+  "live": {
+    "passed": true,
+    "exit_code": 0
+  }
+}

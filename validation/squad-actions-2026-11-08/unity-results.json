@@ -1,0 +1,11 @@
+{
+  "checks": {
+    "exit_code": 0,
+    "passed": true
+  },
+  "live": {
+    "exit_code": 0,
+    "passed": true,
+    "final_hud": true
+  }
+}

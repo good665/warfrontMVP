@@ -1,0 +1,17 @@
+{
+  "backup": "C:\\Users\\good6\\Documents\\ChatGPT\\멀티플랫폼 게임 홈페이지 사이트\\.tools\\all-improvements\\backup-20261108-080041",
+  "files": {
+    "script/MmoView.cs": "1ecbd3bfc17674eb34b93f3b31701346782ccce37c4c9ae1df77cb0905a32649",
+    "script/MmoModels.cs": "204b79ef133eb733ac319f7621c311495402dc68c008156af50fa43e0fadf320",
+    "script/MmoTargetLock.cs": "be13e5286b2890f17d0ac9292260631cd6f2ceb4e46f6a46ddad0e801b49e51b",
+    "script/DungeonFirstPersonView.cs": "b5cb21fd630310a8deebddedc4c53e08fcba38eeb3bff3a0680b2107bfc2694a",
+    "script/FantasyTownView.cs": "b4a606e0673d82f76dc54c75c5b110fcbac329e99c8622645a6c623f0a239675",
+    "script/RetroFantasyScene.cs": "6742d165b3bfb54029c6b8aa660431d7ad2ef6fbbdf0a381986b3ed31fe1aa9c",
+    "script/MmoControlSettings.cs": "10ca9bbd303e98b3eec59c905a646822d58ed46903a4b156f63906b0251be54e",
+    "script/MmoAdventureUi.cs": "4a20bceaa78d42764f25da9fd145b1ed99544ab8bd41314c0a3505f7aea06055",
+    "script/MmoCombatFeedback.cs": "3d2d6c254c0d3cef10156eacef4fa16d75162834c4676504f1bf1e39c48925d3",
+    "Editor/AllImprovementsChecks.cs": "a35d581bea001ef8630e1ad7a9e5954aa86dc32bf83f464e217f28a81baa8984"
+  },
+  "preserved_existing_meta": true,
+  "count": 10
+}

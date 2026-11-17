@@ -1,0 +1,1 @@
+PASS: allied/base vision, enemy/dead/other-floor exclusion, opaque grayscale unknown area, map boundaries, texture Y orientation, camera-independent fog, dark explored terrain and remembered light-grey enemy buildings, main-world enemy hiding/reveal, loss of vision and new-zone reset.

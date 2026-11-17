@@ -1,0 +1,18 @@
+# SDD ledger — plan: 2026-11-14-five-floor-battle.md
+
+Ruling: User explicitly opted out of further questions with 알아서 진행해. Execute inline with documented defaults.
+Ruling: Git refuses this checkout as unsafe even with scoped safe.directory overrides; do not change global Git configuration. Work in the authorized existing workspace, preserve unrelated edits, do not commit.
+Pre-flight: Room lifecycle uses game heroes, bases, camps, units, strategy_snapshot and snapshot; new game must preserve these interfaces. Bot delegates new game controls while legacy simulation tests remain intact.
+Ruling: Retired content means remove playable entry points and refuse world/equipment entry in the current client; preserve historical DB rows and maintenance modules to avoid irreversible data loss.
+
+Task 1: complete — room creation for humans and computer both use FiveFloorGame. Baseline 360 tests passed; expanded suite 387 tests passed in 53.77s. Includes full authoritative minion siege and shared winner responses from two authenticated clients.
+Task 2: complete — active Unity changes installed with source-hash protection and timestamped workspace backups. 12 original animal prefabs + dragon boss, weighted native meshes, UV palette PNGs, URP materials, seven clips each. Assets build and skinned deformation verification PASS. Unity gameplay integration PASS: actual SquadAction preserves animal skill clips, jump pose works, pause clears one-shot actions. Editor renderer screenshot inspected; HUD overlap/skill truncation corrected afterward, final visual check pending.
+Task 3: in progress — real isolated loopback HTTP server PASS (two guest accounts, create/join, character choice, ordinary movement across four portals, mutual snapshots, shared victory after forfeit, computer creation, retired API 404). Repeat after delayed portal transfer change running.
+Independent review: review_five_floor found three Important issues. All fixed with regressions: bot retreats toward own floor; animal clips skip human clip replacement; pause/focus/shutdown clear new one-shot input. No Critical findings.
+Additional verification: poison tick damage no longer rounds fractional damage to one per tick; test proves 8 total damage over one second. Portal source fade-out and destination fade-in tested, match-end inventory and buff cleanup tested.
+Ruling: Existing unexposed MMO maintenance modules and saved DB data retained; no destructive schema/data removal and no deployment performed.
+
+Final verification: full backend suite 387 passed; real loopback two-client check repeated after delayed portal transfer and PASS. Independent reviewer rechecked all three fixes, reran 27 relevant backend tests and found no remaining Important/Critical issue in the reviewed changes.
+Final Unity visual check: actual Editor renderer displayed tiger player, ox opponent, dragon boss and unchanged humanoid minions. Checked full skill names/cooldowns, nine inventory slots with complete stat values, floor overview and separated pause button. Offline visual preview is explicitly labeled; networking is verified separately by the live HTTP script.
+Additional UI regression: portal/jump/pause overlays now block camera-look capture. Extended FiveFloorChecks validates SquadOverlayPointer at the portal button. Editor assemblies rebuilt 09:25 and request consumed with PASS; source/installed hashes verified below.
+Task 3: complete — no real external deployment, phone build, internet-latency/load measurement or full gameplay balance validation claimed. Active scene preserved; generated Zodiac assets are native Unity assets rather than FBX.

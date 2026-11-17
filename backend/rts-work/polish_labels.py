@@ -1,0 +1,2 @@
+﻿from pathlib import Path
+p=Path('rts-work/unity/SquadView.cs');s=p.read_text(encoding='utf-8-sig');s=s.replace('point.y<mmoField.height-100)', 'point.y<mmoField.height-100&&!StrategyPointer(point))');s=s.replace('동일한 전투 능력치로 시작합니다. 기존 장비와 성장 데이터는 경기에 반영되지 않습니다.\\n야영지에서 합류 · 동료 전사 후 12초 뒤 야영지에서 충원 · 영웅은 8초 뒤 부활', '거점 점령으로 보급 확보 · 병력 생산 · 분대 명령 · 건설과 연구로 본진을 공략하세요.\\nTab 전략 지휘 · 미니맵으로 목적지 / 건설 위치 지정 · 야영지에서 기본 동료 합류');p.write_text(s,encoding='utf-8-sig')

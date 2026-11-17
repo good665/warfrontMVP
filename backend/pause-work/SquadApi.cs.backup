@@ -1,0 +1,17 @@
+﻿using System;
+using System.Threading.Tasks;
+using UnityEngine;
+namespace Warfront
+{
+    public sealed partial class ApiClient
+    {
+        public Task<SquadSnapshot> SquadCurrentAsync()=>SendAsync<SquadSnapshot>("GET","/v1/squad/current");
+        public Task<SquadSnapshot> SquadQueueAsync()=>SendAsync<SquadSnapshot>("POST","/v1/squad/queue","{}");
+        public Task<SquadSnapshot> SquadCreateAsync()=>SendAsync<SquadSnapshot>("POST","/v1/squad/create","{}");
+        public Task<SquadSnapshot> SquadComputerAsync()=>SendAsync<SquadSnapshot>("POST","/v1/squad/computer","{}");
+        public Task<SquadSnapshot> SquadJoinAsync(string code)=>SendAsync<SquadSnapshot>("POST","/v1/squad/join",JsonUtility.ToJson(new SquadJoinRequest {code=code}));
+        public Task<SquadSnapshot> SquadStateAsync(string code)=>SendAsync<SquadSnapshot>("GET","/v1/squad/"+Uri.EscapeDataString(code));
+        public Task<SquadSnapshot> SquadInputAsync(string code,SquadInput input)=>SendAsync<SquadSnapshot>("POST","/v1/squad/"+Uri.EscapeDataString(code)+"/input",JsonUtility.ToJson(input));
+        public Task<SquadSnapshot> SquadLeaveAsync()=>SendAsync<SquadSnapshot>("POST","/v1/squad/leave","{}");
+    }
+}
