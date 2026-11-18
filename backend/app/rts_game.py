@@ -5,7 +5,8 @@ from .rts_combat import RtsCombat, distance, COMBAT_RULES
 from .rts_waves import RtsWaves, WAVE_INTERVAL
 from .rts_spacing import RtsSpacing
 from .zodiac_rules import ZODIAC
-from .rts_map import EXTENT, STARTS, resource_points
+from .rts_map import EXTENT, STARTS, CELL, resource_points, bounds, blocked, is_door, cell
+from .rts_path import find_path, walk_clear
 
 
 class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
@@ -41,6 +42,10 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
     def all_targets(self):
         return [*self.units.values(), *self.bases]
 
+    def closed(self, a, x, y):
+        cx, cy = cell(x, y)
+        return blocked(a['floor'], cx, cy) or (a['kind'] != 'hero' and is_door(a['floor'], cx, cy))
+
     def move(self, a, x, y, speed, dt):
         if a['stun_left'] > 0: return
         dx, dy = x-a['x'], y-a['y']
@@ -48,8 +53,40 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
         if norm <= 1e-8: return
         step = min(norm, speed * (.55 if a['slow_left'] > 0 else 1) * dt)
         nx, ny = self.avoid_heroes(a, dx/norm, dy/norm, x, y)
-        a.update(x=max(35., min(EXTENT-35, a['x']+nx*step)),
-                 y=max(35., min(EXTENT-35, a['y']+ny*step)), fx=nx, fy=ny)
+        x0, y0, x1, y1 = bounds(a['floor'])
+        px, py = a['x'], a['y']
+        # Sub-steps no longer than half a cell so dashes cannot tunnel through walls;
+        # a blocked step slides along whichever axis is still open.
+        count = max(1, math.ceil(step / 20))
+        for _ in range(count):
+            tx = max(x0, min(x1, px + nx*step/count))
+            ty = max(y0, min(y1, py + ny*step/count))
+            # A body already inside a wall (old save, teleport edge) may walk out.
+            if self.closed(a, px, py) or not self.closed(a, tx, ty): px, py = tx, ty
+            elif not self.closed(a, tx, py): px = tx
+            elif not self.closed(a, px, ty): py = ty
+            else: break
+        a.update(x=px, y=py, fx=nx, fy=ny)
+
+    def walk(self, u, gx, gy, speed, dt):
+        """move() along an A* route when the straight line is blocked."""
+        doors = u['kind'] == 'hero'
+        if walk_clear(u['floor'], u['x'], u['y'], gx, gy, doors):
+            u['_path'] = []
+            return self.move(u, gx, gy, speed, dt)
+        old = u.get('_path_goal')
+        if (not u.get('_path') or old is None or old[2] != u['floor']
+                or math.hypot(old[0]-gx, old[1]-gy) > CELL and self.elapsed >= u.get('_repath_at', 0)):
+            u.update(_path=find_path(u['floor'], u['x'], u['y'], gx, gy, doors),
+                     _path_goal=(gx, gy, u['floor']), _repath_at=self.elapsed + .5)
+        path = u['_path']
+        # Crowds cannot all stand on a corner waypoint (spacing pushes them apart), so a
+        # waypoint is done once the next one is in straight walking line.
+        while path and (math.hypot(path[0]['x']-u['x'], path[0]['y']-u['y']) <= 12 or len(path) > 1
+                        and walk_clear(u['floor'], u['x'], u['y'], path[1]['x'], path[1]['y'], doors)):
+            path.pop(0)
+        target = path[0] if path else dict(x=gx, y=gy)
+        self.move(u, target['x'], target['y'], speed, dt)
 
     def input(self, pid, data):
         hero = self.heroes[pid]
@@ -89,12 +126,12 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
                     self.start_action(unit,'bow' if unit['kind']=='archer' else 'attack',.3)
                 return
             if command in ('attack_move','focus'):
-                self.move(unit,target['x'],target['y'],180,dt)
+                self.walk(unit,target['x'],target['y'],180,dt)
                 return
         if command in ('move','attack_move','retreat'):
             goal = self.home(unit['owner_id']) if command=='retreat' else dict(x=unit['order_x'],y=unit['order_y'])
             if unit['kind']=='hero' and distance(unit,goal)>1: unit['character_locked']=True
-            self.move(unit,goal['x'],goal['y'],245 if unit['kind']=='hero' else 180,dt)
+            self.walk(unit,goal['x'],goal['y'],245 if unit['kind']=='hero' else 180,dt)
 
     def hero_tick(self, h, dt):
         home = self.home(h['id'])

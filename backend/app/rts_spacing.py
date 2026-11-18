@@ -1,6 +1,6 @@
 """Resolve character overlap on the server without changing issued orders."""
 import math
-from .rts_map import EXTENT
+from .rts_map import EXTENT, bounds
 
 # 80 logical units = 1.6 Unity world units, including visible equipment.
 UNIT_SPACING = 80.
@@ -29,6 +29,8 @@ class RtsSpacing:
                     return (x-actor['x'])**2 + (y-actor['y'])**2
                 if clearance(-1) > clearance(1) + .01:
                     tx, ty = -tx, -ty
+                if self.closed(actor, actor['x'] + tx*20, actor['y'] + ty*20):
+                    return nx, ny
                 return tx, ty
         return nx, ny
 
@@ -64,8 +66,12 @@ class RtsSpacing:
                             push = (UNIT_SPACING-length) / (wa+wb)
                             for actor, weight in ((a, -wa), (b, wb)):
                                 if weight:
-                                    actor['x'] = max(35., min(EXTENT-35, actor['x'] + nx*push*weight))
-                                    actor['y'] = max(35., min(EXTENT-35, actor['y'] + ny*push*weight))
-                            corrected = True
+                                    x0, y0, x1, y1 = bounds(actor['floor'])
+                                    x = max(x0, min(x1, actor['x'] + nx*push*weight))
+                                    y = max(y0, min(y1, actor['y'] + ny*push*weight))
+                                    # Never push a body into a wall; the other body still yields.
+                                    if self.closed(actor, actor['x'], actor['y']) or not self.closed(actor, x, y):
+                                        actor['x'], actor['y'] = x, y
+                                        corrected = True
             if not corrected:
                 break

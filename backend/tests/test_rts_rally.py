@@ -51,20 +51,20 @@ def test_rally_minions_attack_enemies_and_keep_rally_goal(before_wave, kind, arr
     game = RtsGame(['a', 'b'])
     if not before_wave:
         game.tick(30)
-    game.input('a', SquadInput(sequence=1, command='gather', order_x=2000, order_y=1800).model_dump())
+    game.input('a', SquadInput(sequence=1, command='gather', order_x=2000, order_y=1450).model_dump())
     if before_wave:
         game.tick(30)
     unit = next(u for u in game.minions.values() if u['owner_id'] == 'a' and u['kind'] == kind)
-    unit.update(x=2000 if arrived else 1800, y=1800)
+    unit.update(x=2000 if arrived else 1450, y=1450)
     enemy = game.heroes['b']
-    enemy.update(x=unit['x']+50, y=1800, protected=0)
+    enemy.update(x=unit['x']+50, y=1450, protected=0)
     game.command_tick(unit, .05)
     assert enemy['hp'] < enemy['max_hp']
-    assert (unit['order_x'], unit['order_y']) == (2000, 1800)
+    assert (unit['order_x'], unit['order_y']) == (2000, 1450)
     enemy['hp'] = 0
-    before = math.hypot(2000-unit['x'], 1800-unit['y'])
+    before = math.hypot(2000-unit['x'], 1450-unit['y'])
     game.command_tick(unit, .05)
-    after = math.hypot(2000-unit['x'], 1800-unit['y'])
+    after = math.hypot(2000-unit['x'], 1450-unit['y'])
     if arrived:
         assert after == 0
     else:

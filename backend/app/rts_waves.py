@@ -81,4 +81,4 @@ class RtsWaves:
                 break
             index += 1
         unit['_waypoint'] = index
-        self.move(unit, route[index]['x'], route[index]['y'], 180, dt)
+        self.walk(unit, route[index]['x'], route[index]['y'], 180, dt)

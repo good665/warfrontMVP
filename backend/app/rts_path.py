@@ -35,6 +35,10 @@ def line_clear(floor, ax, ay, bx, by):
     return _line(floor, ax, ay, bx, by, lambda cx, cy: sight_blocked(floor, cx, cy))
 
 
+def walk_clear(floor, ax, ay, bx, by, doors_open=True):
+    return _line(floor, ax, ay, bx, by, lambda cx, cy: _closed(floor, cx, cy, doors_open))
+
+
 def find_path(floor, sx, sy, gx, gy, doors_open=True):
     """Waypoints (cell centres, last = goal) from (sx, sy); [] when already there or unreachable."""
     gx, gy = nearest_open(floor, gx, gy, doors_open)
