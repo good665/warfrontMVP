@@ -6,7 +6,7 @@ from .rts_waves import RtsWaves, WAVE_INTERVAL
 from .rts_spacing import RtsSpacing
 from .zodiac_rules import ZODIAC
 from .rts_map import EXTENT, STARTS, CELL, OUTDOOR, CHESTS, DOOR_AT, resource_points, bounds, blocked, is_door, cell
-from .rts_path import find_path, walk_clear, line_clear
+from .rts_path import find_path, walk_clear, line_clear, nearest_open
 
 
 class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
@@ -71,7 +71,10 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
 
     def walk(self, u, gx, gy, speed, dt):
         """move() along an A* route when the straight line is blocked."""
-        doors = u['kind'] == 'hero'
+        # Ordered heroes only use a door when the order targets that door; otherwise a
+        # blocked goal could resolve to the door cell and teleport them inside.
+        doors = u['kind'] == 'hero' and is_door(u['floor'], *cell(gx, gy))
+        gx, gy = nearest_open(u['floor'], gx, gy, doors)
         if walk_clear(u['floor'], u['x'], u['y'], gx, gy, doors):
             u['_path'] = []
             return self.move(u, gx, gy, speed, dt)

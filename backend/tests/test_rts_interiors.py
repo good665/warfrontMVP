@@ -117,3 +117,14 @@ def test_map_endpoint():
 
 def test_input_accepts_interior_aim():
     assert SquadInput(sequence=1, aim_x=8000, aim_y=900).aim_x == 8000
+
+
+def test_hero_order_onto_house_does_not_enter_by_accident():
+    game = RtsGame(['a', 'b'])
+    hero = game.heroes['a']
+    step_on(hero, m.OUTDOOR, 29, 17)
+    target = c(29, 13)  # inside the house footprint, right behind its door
+    game.input('a', dict(sequence=1, command='move', unit_ids=['a'], order_x=target[0], order_y=target[1]))
+    for _ in range(100):
+        game.tick(.05)
+    assert hero['floor'] == m.OUTDOOR
