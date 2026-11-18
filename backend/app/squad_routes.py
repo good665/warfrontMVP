@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field
 from .online_routes import online_player
 from .squad_rooms import squad_rooms
+from .rts_map import map_payload
 from .database import get_db
 from .models import Player
 from sqlalchemy.orm import Session
@@ -34,8 +35,8 @@ class SquadInput(EmptyRequest):
     jump: bool = False
     move_x: float = Field(default=0, ge=-1, le=1)
     move_y: float = Field(default=0, ge=-1, le=1)
-    aim_x: float = Field(default=0, ge=-1000, le=7400)
-    aim_y: float = Field(default=0, ge=-1000, le=7400)
+    aim_x: float = Field(default=0, ge=-1000, le=8400)  # interiors sit at x 6800..8400
+    aim_y: float = Field(default=0, ge=-1000, le=8400)
     attack: bool = False
     dodge: bool = False
     skill1: bool = False
@@ -74,6 +75,12 @@ def join(payload: JoinRequest, pid: str = Depends(online_player), db: Session = 
 @router.post('/leave')
 def leave(payload: EmptyRequest, pid: str = Depends(online_player)):
     return squad_rooms.leave(pid)
+
+
+# Static layout; registered before '/{code}' so 'map' is not taken as a room code.
+@router.get('/map')
+def squad_map():
+    return map_payload()
 
 
 @router.get('/{code}')

@@ -26,6 +26,7 @@ class RtsCombat:
         result = dict(attack=20., health=160., speed=245., armor=0., cooldown=0.)
         if h['speed_left'] > 0: result['speed'] *= 1.45
         if h['rally_left'] > 0: result['attack'] *= 1.2
+        if h.get('attack_left', 0) > 0: result['attack'] *= 1.3
         return result
 
     def input(self, pid, data):

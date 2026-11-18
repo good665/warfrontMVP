@@ -23,14 +23,14 @@ def test_stacked_minions_separate_even_at_map_edge(point):
 
 def test_repeated_waves_stay_spread_at_rally_point():
     game = RtsGame(['a', 'b'])
-    # Open ground inside the base turret range on the walled map.
-    game.input('a', dict(sequence=1, command='gather', order_x=850, order_y=850))
+    # Nearest open ground to the old (1500, 600) rally, which is now inside a house.
+    game.input('a', dict(sequence=1, command='gather', order_x=1500, order_y=900))
     for _ in range(1500):
         game.tick(.05)
     units = [u for u in game.minions.values() if u['owner_id'] == 'a']
     assert len(units) == 10
     assert closest(units) >= 78
-    assert all(math.hypot(u['x']-850, u['y']-850) < 350 for u in units)
+    assert all(math.hypot(u['x']-1500, u['y']-900) < 350 for u in units)
 
 
 @pytest.mark.parametrize('hero_point', [(800, 800), (750, 750), (1200, 1200)])

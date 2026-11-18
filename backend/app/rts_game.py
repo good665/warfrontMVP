@@ -5,8 +5,8 @@ from .rts_combat import RtsCombat, distance, COMBAT_RULES
 from .rts_waves import RtsWaves, WAVE_INTERVAL
 from .rts_spacing import RtsSpacing
 from .zodiac_rules import ZODIAC
-from .rts_map import EXTENT, STARTS, CELL, resource_points, bounds, blocked, is_door, cell
-from .rts_path import find_path, walk_clear
+from .rts_map import EXTENT, STARTS, CELL, OUTDOOR, CHESTS, DOOR_AT, resource_points, bounds, blocked, is_door, cell
+from .rts_path import find_path, walk_clear, line_clear
 
 
 class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
@@ -24,6 +24,7 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
         self.next_id = 0
         self.next_wave = WAVE_INTERVAL
         self.rally_points = {}
+        self.chests = {c['id']: dict(c, ready_at=0.) for c in CHESTS}
         for index, pid in enumerate(ids):
             team = index % 2
             x, y = STARTS[index]
@@ -36,7 +37,7 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
             h.update(owner_id=pid, name='플레이어', character='rat', character_locked=False,
                      sequence=-1, input={}, input_at=-1., command='hold', recruited=True,
                      _pending_actions={},
-                     speed_left=0., rally_left=0., order_x=h['x'], order_y=h['y'])
+                     speed_left=0., rally_left=0., door_cooldown=0., attack_left=0., order_x=h['x'], order_y=h['y'])
             self.heroes[pid] = self.units[pid] = h
 
     def all_targets(self):
@@ -108,6 +109,26 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
                         order_x=max(35., min(EXTENT-35, data.get('order_x', unit['x']))),
                         order_y=max(35., min(EXTENT-35, data.get('order_y', unit['y']))), target_id=data.get('target_id', ''))
 
+    def can_hit(self, a, b):
+        return a['floor'] == b['floor'] and line_clear(a['floor'], a['x'], a['y'], b['x'], b['y'])
+
+    def interact(self, h):
+        """Doors move heroes between floors; chests grant one random 60s-respawning reward."""
+        door = DOOR_AT.get((h['floor'], *cell(h['x'], h['y'])))
+        if door and h['door_cooldown'] <= 0:
+            h.update(floor=door['to_floor'], x=door['to_x'], y=door['to_y'], door_cooldown=1.,
+                     command='hold', order_x=door['to_x'], order_y=door['to_y'], _path=[])
+            self.event(h, 'door', 60.)
+        for chest in self.chests.values():
+            if (chest['floor'] == h['floor'] and chest['ready_at'] <= self.elapsed
+                    and math.hypot(chest['x']-h['x'], chest['y']-h['y']) <= 40):
+                chest['ready_at'] = self.elapsed + 60.
+                reward = self.rng.choice(('heal', 'speed', 'attack'))
+                if reward == 'heal': h['hp'] = h['max_hp']
+                elif reward == 'speed': h['speed_left'] = 20.
+                else: h['attack_left'] = 30.
+                self.event(h, 'chest', 60., text=reward)
+
     def home(self, pid):
         return next(b for b in self.bases if b['owner_id'] == pid)
 
@@ -115,10 +136,10 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
         command = unit.get('command', 'hold')
         enemies = [a for a in self.all_targets() if a['team'] != unit['team'] and a['hp'] > 0]
         focused = next((a for a in enemies if a['id']==unit.get('target_id')), None)
-        target = focused or min((a for a in enemies if distance(a,unit)<420), key=lambda a:distance(a,unit), default=None)
+        target = focused or min((a for a in enemies if distance(a,unit)<420 and self.can_hit(unit,a)), key=lambda a:distance(a,unit), default=None)
         reach = 320 if unit['kind'] in ('archer','hero') else 110
         if target and command != 'move' and command != 'retreat':
-            if distance(unit,target) <= reach:
+            if distance(unit,target) <= reach and self.can_hit(unit,target):
                 if unit['attack_cooldown'] <= 0:
                     if unit['kind']=='hero': unit['character_locked']=True
                     self.damage(target, self.stats(unit)['attack'] if unit['kind']=='hero' else 14 if unit['kind']=='guard' else 10, unit)
@@ -137,7 +158,7 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
         home = self.home(h['id'])
         if h['hp'] <= 0:
             if h['respawn_left'] <= 1e-8 and home['hp'] > 0:
-                h.update(hp=h['max_hp'], x=home['x'], y=home['y'], protected=3., input={}, poison_left=0., command='hold')
+                h.update(hp=h['max_hp'], x=home['x'], y=home['y'], floor=OUTDOOR, protected=3., input={}, poison_left=0., command='hold')
             return
         data = h['input'] if self.elapsed-h['input_at'] <= .35 else {}
         if h['stun_left'] > 0: return
@@ -161,12 +182,13 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
                 h.update(dodge_left=.22,dodge_cooldown=3.)
         if data.get('attack') and h['attack_cooldown']<=0:
             h['character_locked']=True
-            targets=[a for a in self.all_targets() if a['team']!=h['team'] and a['hp']>0 and distance(a,h)<650 and (a['x']-h['x'])*h['fx']+(a['y']-h['y'])*h['fy']>=distance(a,h)*.85]
+            targets=[a for a in self.all_targets() if a['team']!=h['team'] and a['hp']>0 and distance(a,h)<650 and (a['x']-h['x'])*h['fx']+(a['y']-h['y'])*h['fy']>=distance(a,h)*.85 and self.can_hit(h,a)]
             if targets: self.damage(min(targets,key=lambda a:distance(a,h)),self.stats(h)['attack'],h)
             h['attack_cooldown']=.55
             self.start_action(h,'attack',.28)
             self.event(h,'shot',650.)
-        if home['hp']>0 and distance(h,home)<240: h['hp']=min(h['max_hp'],h['hp']+8*dt)
+        if home['hp']>0 and h['floor']==home['floor'] and distance(h,home)<240: h['hp']=min(h['max_hp'],h['hp']+8*dt)
+        self.interact(h)
 
     def tick(self, dt):
         if self.reason: return
@@ -180,7 +202,7 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
                 if source: self.damage(a,a['poison_damage']*min(dt,a['poison_left']),source)
                 a['poison_left']=max(0.,a['poison_left']-dt)
         for h in self.heroes.values():
-            for key in ('speed_left','rally_left'): h[key]=max(0.,h[key]-dt)
+            for key in ('speed_left','rally_left','door_cooldown','attack_left'): h[key]=max(0.,h[key]-dt)
             self.hero_tick(h,dt)
         for uid,a in list(self.minions.items()):
             if a['hp']<=0: self.minions.pop(uid);self.units.pop(uid)
@@ -188,7 +210,7 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
                 if a.get('command') == 'wave': self.wave_tick(a,dt)
                 else: self.command_tick(a,dt)
         for base in self.bases:
-            enemies=[a for a in self.units.values() if a['team']!=base['team'] and a['hp']>0 and distance(a,base)<380]
+            enemies=[a for a in self.units.values() if a['team']!=base['team'] and a['hp']>0 and distance(a,base)<380 and self.can_hit(base,a)]
             if base['hp']>0 and enemies and base['attack_cooldown']<=0:
                 self.damage(min(enemies,key=lambda a:distance(a,base)),26,base);base['attack_cooldown']=1.
         self.effects=[e for e in self.effects if e['expires']>self.elapsed]
@@ -210,11 +232,12 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing):
 
     def snapshot(self,pid,code,now):
         h=self.heroes[pid];team=h['team'];stats=self.stats(h)
-        return dict(zone='squad',instance_id=code,world_width=EXTENT,world_height=EXTENT,you_id=pid,last_sequence=h['sequence'],server_time=now,rts=True,floor=1,
+        return dict(zone='squad',instance_id=code,world_width=EXTENT,world_height=EXTENT,you_id=pid,last_sequence=h['sequence'],server_time=now,rts=True,floor=h['floor'],
                     profile=dict(level=1,xp=0,xp_next=100,gold=0,role=0,weapon_rank=0,armor_rank=0,attack=stats['attack'],max_hp=stats['health'],equipped_weapon='',equipped_armor='',quest=None,inventory=[]),
                     players=[self.public(a) for a in self.units.values() if a['team']==team],enemies=[self.public(a) for a in self.all_targets() if a['team']!=team],
-                    effects=[dict({k:v for k,v in e.items() if k not in ('expires','started')},age=self.elapsed-e['started']) for e in self.effects],hazards=[],projectiles=[],bombs=[],combat_rules=dict(COMBAT_RULES),obstacles=[],party=dict(code=f'squad-{team}',leader_id=pid,members=[]))
+                    effects=[dict({k:v for k,v in e.items() if k not in ('expires','started')},age=self.elapsed-e['started']) for e in self.effects],hazards=[],projectiles=[],bombs=[],combat_rules=dict(COMBAT_RULES),obstacles=[],party=dict(code=f'squad-{team}',leader_id=pid,members=[]),
+                    chests=[dict(id=c['id'],floor=c['floor'],x=c['x'],y=c['y'],ready=c['ready_at']<=self.elapsed) for c in self.chests.values() if c['floor']==h['floor']])
 
     def battle_snapshot(self,pid):
         h=self.heroes[pid]
-        return dict(rts=True,floor=1,character=h['character'],character_locked=h['character_locked'],next_wave=0. if self.reason else max(0., self.next_wave-self.elapsed),characters=[dict(id=k,**v) for k,v in ZODIAC.items()],pings=[{k:v for k,v in p.items() if k!='expires'} for p in self.pings if p['team']==h['team']])
+        return dict(rts=True,floor=h['floor'],character=h['character'],character_locked=h['character_locked'],next_wave=0. if self.reason else max(0., self.next_wave-self.elapsed),characters=[dict(id=k,**v) for k,v in ZODIAC.items()],pings=[{k:v for k,v in p.items() if k!='expires'} for p in self.pings if p['team']==h['team']])

@@ -61,7 +61,7 @@ class RtsWaves:
             unit['_waypoint'] = 1
         enemies = [a for a in self.all_targets() if a['team'] != unit['team'] and a['hp'] > 0
                    and (a['kind'] != 'base' or unit['_waypoint'] >= len(unit['_waypoints']) - 1)
-                   and distance(a, unit) < 420]
+                   and distance(a, unit) < 420 and self.can_hit(unit, a)]
         if enemies:
             # Reuse existing attack-move targeting, without replacing the route.
             unit['command'] = 'attack_move'
