@@ -10,6 +10,9 @@ from .squad_items import ITEMS, SLOTS, BAG_SIZE, RtsItems
 from .rts_path import find_path, walk_clear, line_clear, nearest_open
 
 
+BUFF_NAMES = dict(heal='체력 회복', speed='이동 속도 증가', attack='공격력 증가')  # chest buff text shown to players
+
+
 class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems):
     rts = True
 
@@ -137,7 +140,7 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems):
                 if reward == 'heal': h['hp'] = h['max_hp']
                 elif reward == 'speed': h['speed_left'] = 20.
                 elif reward == 'attack': h['attack_left'] = 30.
-                self.event(h, 'chest', 60., text=ITEMS[reward]['name'] if reward in ITEMS else reward)
+                self.event(h, 'chest', 60., text=ITEMS[reward]['name'] if reward in ITEMS else BUFF_NAMES[reward])
         self.pickup(h)
 
     def home(self, pid):
