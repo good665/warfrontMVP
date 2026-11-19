@@ -2,6 +2,7 @@
 from .rts_map import EXTENT
 from .rts_combat import distance
 from .rts_spacing import UNIT_SPACING
+from .zodiac_rules import HP_SCALE
 
 WAVE_INTERVAL = 30.
 WAVE_KINDS = ('guard', 'guard', 'guard', 'archer', 'archer')
@@ -36,7 +37,7 @@ class RtsWaves:
                 self.next_id += 1
                 uid = f'wave-{self.next_id}'
                 unit = self.actor(uid, kind, base['team'], base['x'] + sx * 120 + (i - 2) * 30,
-                                  base['y'] + sy * 120, 180 if kind == 'guard' else 100, 1)
+                                  base['y'] + sy * 120, (180 if kind == 'guard' else 100) * HP_SCALE, 1)
                 unit.update(owner_id=base['owner_id'], command='wave', wave=True,
                             order_x=destination['x'], order_y=destination['y'], target_id='')
                 self.set_wave_route(unit, destination)

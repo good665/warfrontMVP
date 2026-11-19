@@ -53,7 +53,7 @@ def test_two_humans_code_join_shared_state_replay_isolation_and_victory(monkeypa
         # Place the attackers at the target to keep this route test fast; damage is real.
         for unit in game.units.values():
             if unit['owner_id'] == 'a':
-                unit.update(x=goal['x']-90, y=goal['y'], hp=10000, max_hp=10000)
+                unit.update(x=goal['x']-90, y=goal['y'], hp=100000, max_hp=100000)
         assert one.post(path, json={'sequence': 3, 'command': 'focus', 'target_id': goal['id'],
                                    'unit_ids': [u['id'] for u in game.units.values() if u['owner_id']=='a'],
                                    'order_x': goal['x'], 'order_y': goal['y']}, headers=headers['a']).status_code == 200

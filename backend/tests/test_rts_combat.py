@@ -22,6 +22,21 @@ def test_each_animal_can_use_q_and_e_with_server_cooldowns(animal):
     assert h['skill2_cooldown'] > 0
 
 
+def test_running_hero_faces_the_key_direction_and_turns_to_the_mouse_to_attack():
+    game = RtsGame(['a', 'b'], seed=7)
+    h = game.heroes['a']
+    mouse = dict(aim_x=h['x'] - 500, aim_y=h['y'])   # mouse to the left
+    game.input('a', dict(sequence=1, move_x=1, **mouse))   # D key: run right
+    game.tick(.05)
+    assert h['fx'] > .99
+    game.input('a', dict(sequence=2, **mouse))   # standing still: face the mouse
+    game.tick(.05)
+    assert h['fx'] < -.99
+    game.input('a', dict(sequence=3, move_x=1, attack=True, **mouse))   # attacking while running
+    game.tick(.05)
+    assert h['fx'] < -.99
+
+
 def test_jump_is_visual_and_cannot_prevent_damage():
     game = RtsGame(['a', 'b'], seed=7)
     a, b = game.heroes.values()
@@ -42,4 +57,4 @@ def test_poison_tick_damage_is_independent_of_simulation_tick_size():
     a.update(floor=1, x=100, y=100)
     b.update(floor=1, x=1500, y=100, protected=0, poison_left=1., poison_damage=8., poison_owner=a['id'])
     advance(game, 1.)
-    assert b['hp'] == pytest.approx(152.)
+    assert b['hp'] == pytest.approx(b['max_hp'] - 8.)

@@ -4,6 +4,10 @@ from fastapi.testclient import TestClient
 from app import rts_map as m, squad_routes
 from app.rts_game import RtsGame
 from app.squad_routes import SquadInput
+from app.zodiac_rules import ZODIAC
+import pytest
+
+m_attack = ZODIAC['rat']['attack']
 
 C = m.CELL
 
@@ -68,9 +72,10 @@ def test_chest_reward_and_respawn():
     game.tick(.05)
     state = game.chests[chest['id']]
     assert state['ready_at'] > game.elapsed
-    assert hero['hp'] == hero['max_hp'] or hero['speed_left'] > 0 or hero['attack_left'] > 0
+    assert (hero['hp'] == hero['max_hp'] or hero['speed_left'] > 0 or hero['attack_left'] > 0
+            or hero['weapon'] or hero['armor'] or hero['_bag'])
     hero.update(attack_left=5)
-    assert game.stats(hero)['attack'] == 20 * 1.3
+    assert game.stats(hero)['attack'] == pytest.approx(m_attack * 1.3)
     hero['x'] += 200
     game.tick(60.)
     assert state['ready_at'] <= game.elapsed

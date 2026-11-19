@@ -15,8 +15,12 @@ class EmptyRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
 
+Character = Literal['', 'rat', 'ox', 'tiger', 'rabbit', 'dragon', 'snake', 'horse', 'goat', 'monkey', 'rooster', 'dog', 'pig']
+
+
 class MatchRequest(EmptyRequest):
     team_size: Literal[1, 2] = 1
+    character: Character = ''
 
 
 class JoinRequest(EmptyRequest):
@@ -31,7 +35,7 @@ class SquadInput(EmptyRequest):
     model_config = ConfigDict(extra='forbid', allow_inf_nan=False)
     unit_ids: list[str] = Field(default_factory=list, max_length=128)
     sequence: int = Field(ge=0, le=2147483647)
-    character: Literal['', 'rat', 'ox', 'tiger', 'rabbit', 'dragon', 'snake', 'horse', 'goat', 'monkey', 'rooster', 'dog', 'pig'] = ''
+    character: Character = ''
     jump: bool = False
     move_x: float = Field(default=0, ge=-1, le=1)
     move_y: float = Field(default=0, ge=-1, le=1)
@@ -41,6 +45,8 @@ class SquadInput(EmptyRequest):
     dodge: bool = False
     skill1: bool = False
     skill2: bool = False
+    item: int = Field(default=-1, ge=-1, le=9)  # inventory slot to use, -1 = none
+    drop: int = Field(default=-1, ge=-1, le=9)  # inventory slot to drop on the ground
     command: Literal['none', 'gather', 'focus', 'hold', 'retreat', 'move', 'attack_move'] = 'none'
     target_id: str = Field(default='', max_length=128)
     order_x: float = Field(default=0, ge=0, le=6400)
@@ -64,7 +70,8 @@ def create(payload: MatchRequest, pid: str = Depends(online_player), db: Session
 
 @router.post('/computer')
 def computer(payload: MatchRequest, pid: str = Depends(online_player), db: Session = Depends(get_db)):
-    return squad_rooms.computer(pid, name=db.get(Player, pid).display_name, team_size=payload.team_size)
+    return squad_rooms.computer(pid, name=db.get(Player, pid).display_name, team_size=payload.team_size,
+                                character=payload.character)
 
 
 @router.post('/join')

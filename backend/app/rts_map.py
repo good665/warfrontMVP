@@ -124,15 +124,17 @@ def _interior_char(floor, cx, cy):
     return rows[r][c] if 0 <= r < len(rows) and 0 <= c < len(rows[0]) else '#'
 
 
-def blocked(floor, cx, cy):
+def blocked(floor, cx, cy, opened=frozenset()):
+    """opened: outdoor wall cells a match has destroyed (long whip)."""
     if floor == OUTDOOR:
-        return not (0 <= cx < SIZE and 0 <= cy < SIZE) or (cx, cy) in SOLID_CELLS or (cx, cy) in WATER_CELLS
+        return (not (0 <= cx < SIZE and 0 <= cy < SIZE) or (cx, cy) in WATER_CELLS
+                or (cx, cy) in SOLID_CELLS and (cx, cy) not in opened)
     return floor not in INTERIORS or _interior_char(floor, cx, cy) == '#'
 
 
-def sight_blocked(floor, cx, cy):
+def sight_blocked(floor, cx, cy, opened=frozenset()):
     if floor == OUTDOOR:
-        return not (0 <= cx < SIZE and 0 <= cy < SIZE) or (cx, cy) in SOLID_CELLS
+        return not (0 <= cx < SIZE and 0 <= cy < SIZE) or (cx, cy) in SOLID_CELLS and (cx, cy) not in opened
     return blocked(floor, cx, cy)
 
 

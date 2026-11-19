@@ -102,3 +102,11 @@ def test_computer_endpoint_requires_auth_and_does_not_create_database_records(mo
         assert response.json()['mode'] == 'computer'
         assert client.post('/v1/squad/computer', json={'bot_id': 'fake'}).status_code == 422
         assert client.get('/v1/squad/current').json()['code'] == response.json()['code']
+
+
+def test_computer_spawns_hero_as_requested_character():
+    rooms = SquadRooms(clock=lambda: 0.)
+    state = rooms.computer('human', '사용자', character='tiger')
+    hero = rooms.rooms[state['code']]['game'].heroes['human']
+    assert hero['character'] == 'tiger' and hero['hp'] == hero['max_hp']
+    assert not hero['character_locked']  # still changeable before the first fight

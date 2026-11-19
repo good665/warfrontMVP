@@ -128,7 +128,7 @@ class SquadRooms:
         if pid.startswith('bot:'):
             raise HTTPException(403, 'squad_reserved_player_id')
 
-    def computer(self, pid, name='영웅', team_size=1):
+    def computer(self, pid, name='영웅', team_size=1, character=''):
         with self.lock:
             self.human_id(pid)
             current = self.membership.get(pid)
@@ -147,6 +147,8 @@ class SquadRooms:
                         status='active', game=RtsGame(room['ids'],team_size=team_size))
             for member in room['ids']:
                 room['game'].heroes[member]['name'] = room['names'][member]
+            # Spawn as the picked hero so the first snapshot doesn't show the default rat.
+            room['game'].choose_character(room['game'].heroes[pid], character)
             return self.state(room['code'], pid)
 
     def join(self, code, pid, name='영웅'):

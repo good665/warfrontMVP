@@ -6,21 +6,21 @@ from .rts_map import CELL, blocked, cell, is_door, sight_blocked
 DIAGONAL = math.sqrt(2)
 
 
-def _closed(floor, cx, cy, doors_open):
-    return blocked(floor, cx, cy) or (not doors_open and is_door(floor, cx, cy))
+def _closed(floor, cx, cy, doors_open, opened=frozenset()):
+    return blocked(floor, cx, cy, opened) or (not doors_open and is_door(floor, cx, cy))
 
 
 def _center(cx, cy):
     return (cx + .5) * CELL, (cy + .5) * CELL
 
 
-def nearest_open(floor, x, y, doors_open=True):
+def nearest_open(floor, x, y, doors_open=True, opened=frozenset()):
     cx, cy = cell(x, y)
-    if not _closed(floor, cx, cy, doors_open):
+    if not _closed(floor, cx, cy, doors_open, opened):
         return x, y
     for r in range(1, 20):
         ring = [(cx+dx, cy+dy) for dx in range(-r, r+1) for dy in range(-r, r+1) if max(abs(dx), abs(dy)) == r]
-        ring = [p for p in ring if not _closed(floor, *p, doors_open)]
+        ring = [p for p in ring if not _closed(floor, *p, doors_open, opened)]
         if ring:
             return _center(*min(ring, key=lambda p: math.hypot(_center(*p)[0]-x, _center(*p)[1]-y)))
     return x, y
@@ -31,21 +31,21 @@ def _line(floor, ax, ay, bx, by, closed):
     return not any(closed(*cell(ax + (bx-ax)*i/steps, ay + (by-ay)*i/steps)) for i in range(steps+1))
 
 
-def line_clear(floor, ax, ay, bx, by):
-    return _line(floor, ax, ay, bx, by, lambda cx, cy: sight_blocked(floor, cx, cy))
+def line_clear(floor, ax, ay, bx, by, opened=frozenset()):
+    return _line(floor, ax, ay, bx, by, lambda cx, cy: sight_blocked(floor, cx, cy, opened))
 
 
-def walk_clear(floor, ax, ay, bx, by, doors_open=True):
-    return _line(floor, ax, ay, bx, by, lambda cx, cy: _closed(floor, cx, cy, doors_open))
+def walk_clear(floor, ax, ay, bx, by, doors_open=True, opened=frozenset()):
+    return _line(floor, ax, ay, bx, by, lambda cx, cy: _closed(floor, cx, cy, doors_open, opened))
 
 
-def find_path(floor, sx, sy, gx, gy, doors_open=True):
+def find_path(floor, sx, sy, gx, gy, doors_open=True, opened=frozenset()):
     """Waypoints (cell centres, last = goal) from (sx, sy); [] when already there or unreachable."""
-    gx, gy = nearest_open(floor, gx, gy, doors_open)
+    gx, gy = nearest_open(floor, gx, gy, doors_open, opened)
     start, goal = cell(sx, sy), cell(gx, gy)
     if start == goal:
         return []
-    closed = lambda cx, cy: _closed(floor, cx, cy, doors_open)
+    closed = lambda cx, cy: _closed(floor, cx, cy, doors_open, opened)
     came, cost, todo = {start: None}, {start: 0.}, [(0., start)]
     while todo:
         _, cur = heapq.heappop(todo)
