@@ -75,8 +75,8 @@ CLIENT = {
     '내 캐릭터 전용 · 효과 100%': 'Made for your character · 100% effect',
     '다른 캐릭터 전용 · 효과 절반': "Another character's gear · half effect",
     '다른 캐릭터 전용 · 일반 갑옷만큼만 막아 줌': "Another character's gear · blocks like plain armor",
-    '도끼 · 공격력 증가 (전용 무기보다 약함) · 건물 내부 벽을 부술 수 있습니다':
-        'Axe · attack up (weaker than exclusive weapons) · can break walls inside buildings',
+    '도끼 · 사용하면 앞쪽 건물 안 테이블·의자를 한 번 내려쳐 부숩니다 (50% 확률로 아이템 3개)':
+        'Axe · one chop that smashes the table or chair in front of you inside a building (50% chance of 3 items)',
     '갑옷 · 방어력 증가': 'Armor · armor up',
     '포탈 · 다른 건물로 랜덤 이동 (이동 후 3초 무적)': 'Portal · teleport to a random other building (3 s invulnerable)',
     '업그레이드 포탈 · 우리 기지 성벽으로 이동 (3초 무적)': 'Upgraded Portal · teleport inside your base walls (3 s invulnerable)',

@@ -7,7 +7,7 @@ DIAGONAL = math.sqrt(2)
 
 
 def _closed(floor, cx, cy, doors_open, opened=frozenset()):
-    return blocked(floor, cx, cy, opened) or (not doors_open and is_door(floor, cx, cy))
+    return blocked(floor, cx, cy, opened) or (not doors_open and is_door(floor, cx, cy, opened))
 
 
 def _center(cx, cy):

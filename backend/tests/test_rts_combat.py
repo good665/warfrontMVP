@@ -58,3 +58,48 @@ def test_poison_tick_damage_is_independent_of_simulation_tick_size():
     b.update(floor=1, x=1500, y=100, protected=0, poison_left=1., poison_damage=8., poison_owner=a['id'])
     advance(game, 1.)
     assert b['hp'] == pytest.approx(b['max_hp'] - 8.)
+
+
+def test_tiger_roar_roots_the_hero_until_the_animation_ends():
+    game = RtsGame(['a', 'b'], seed=7)
+    h = game.heroes['a']
+    game.input('a', dict(sequence=1, character='tiger'))
+    game.input('a', dict(sequence=2, skill2=True, aim_x=h['x'] + 300, aim_y=h['y']))
+    game.tick(.05)
+    start = (h['x'], h['y'])
+    for i in range(50):  # 2.5s of holding D and clicking attack
+        game.input('a', dict(sequence=3 + i, move_x=1, attack=True))
+        game.tick(.05)
+        assert h['attack_cooldown'] == 0
+    assert (h['x'], h['y']) == start
+    for i in range(10):
+        game.input('a', dict(sequence=60 + i, move_x=1))
+        game.tick(.05)
+    assert h['x'] > start[0]
+
+
+def test_other_ultimates_do_not_root():
+    game = RtsGame(['a', 'b'], seed=7)
+    h = game.heroes['a']
+    game.input('a', dict(sequence=1, character='rat'))
+    game.input('a', dict(sequence=2, skill2=True, aim_x=h['x'] + 300, aim_y=h['y']))
+    game.tick(.05)
+    assert h['cast_left'] == 0
+
+
+def test_tiger_slash_roots_and_holds_fire_for_its_animation():
+    game = RtsGame(['a', 'b'], seed=7)
+    h = game.heroes['a']
+    game.input('a', dict(sequence=1, character='tiger'))
+    game.input('a', dict(sequence=2, skill1=True, aim_x=h['x'] + 300, aim_y=h['y']))
+    game.tick(.05)
+    start = (h['x'], h['y'])
+    for i in range(22):  # 1.1s of holding D and clicking attack
+        game.input('a', dict(sequence=3 + i, move_x=1, attack=True))
+        game.tick(.05)
+        assert h['attack_cooldown'] == 0
+    assert (h['x'], h['y']) == start
+    for i in range(6):
+        game.input('a', dict(sequence=30 + i, move_x=1))
+        game.tick(.05)
+    assert h['x'] > start[0]

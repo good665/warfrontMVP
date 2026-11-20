@@ -5,6 +5,8 @@ from .squad_items import armor_bonus, weapon_bonus
 
 STAT_KEYS = ('hp', 'attack', 'armor', 'magic_armor', 'speed', 'armor_pen', 'magic_pen', 'lifesteal')
 COMBAT_RULES = dict(attack_reach=145., heavy_reach=210., attack_dot=.35)
+# Unity plays the tiger's Mixamo clips at 2x (2.4s slash Q, 5.4s roar E); the hero stays put and holds fire meanwhile.
+TIGER_CAST_SECONDS = dict(skill1=1.2, skill2=2.7)
 
 
 def distance(a, b):
@@ -15,7 +17,7 @@ class RtsCombat:
     @staticmethod
     def actor(uid, kind, team, x, y, hp, floor=1):
         a = dict(id=uid, kind=kind, team=team, x=x, y=y, hp=float(hp), max_hp=float(hp), fx=1.-2*team, fy=0., attack_cooldown=0., dodge_cooldown=0., skill1_cooldown=0., skill2_cooldown=0., dodge_left=0., dodge_dx=0., dodge_dy=0., hit_flash=0., respawn_left=0., charge_active=False, charge_time=0., charge_ratio=0., protected=0., body_radius=dict(hero=22., guard=22., archer=20., healer=20., base=75.)[kind], action_id=0, action_target='', action_kind='', action_left=0., action_duration=0., action_fx=1.-2*team, action_fy=0., attack_phase='idle', _action_hits=set())
-        a.update(floor=floor, jump_left=0., jump_cooldown=0., slow_left=0., stun_left=0., poison_left=0., poison_damage=0., poison_owner='', owner_id='', shield=0., shield_left=0.)
+        a.update(floor=floor, jump_left=0., jump_cooldown=0., slow_left=0., stun_left=0., poison_left=0., poison_damage=0., poison_owner='', owner_id='', shield=0., shield_left=0., cast_left=0.)
         return a
 
     @staticmethod
@@ -94,6 +96,7 @@ class RtsCombat:
         h[action + '_cooldown'] = (22. if ultimate else rules['q_cooldown']) * (1. - self.stats(h)['cooldown'])
         h['character_locked'] = True
         self.start_action(h, 'ultimate' if ultimate else 'skill', .5 if ultimate else .32)
+        if h['character'] == 'tiger': h['cast_left'] = TIGER_CAST_SECONDS[action]
         scale = rules[prefix + '_scale']
         ax, ay = data.get('aim_x', h['x'] + h['fx']) - h['x'], data.get('aim_y', h['y'] + h['fy']) - h['y']
         n = math.hypot(ax, ay)

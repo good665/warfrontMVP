@@ -116,8 +116,22 @@ def test_map_endpoint():
     app.include_router(squad_routes.router)
     with TestClient(app) as client:
         response = client.get('/v1/squad/map')
-    assert response.status_code == 200
-    assert len(response.json()['interiors']) == 6
+        duo = client.get('/v1/squad/map', params=dict(team_size=2))
+    assert response.status_code == 200 and duo.status_code == 200
+    assert len(response.json()['interiors']) == 8
+    assert len(duo.json()['interiors']) == 6
+
+
+def test_manor_door_only_exists_in_one_vs_one():
+    solo, duo = RtsGame(['a', 'b']), RtsGame(['a', 'b', 'c', 'd'], team_size=2)
+    for game in (solo, duo):
+        step_on(game.heroes['a'], m.OUTDOOR, 123, 11)  # NE manor door
+        game.tick(.05)
+    assert solo.heroes['a']['floor'] in m.MANOR_FLOORS
+    assert duo.heroes['a']['floor'] == m.OUTDOOR
+    # In 2:2 the NE corner is a base, and its footprint is walkable ground.
+    duo_base = next(b for b in duo.bases if m.cell(b['x'], b['y']) == m.cell(*m.STARTS[3]))
+    assert not duo.closed(duo.heroes['a'], *c(110, 2)) and duo_base['hp'] > 0
 
 
 def test_input_accepts_interior_aim():

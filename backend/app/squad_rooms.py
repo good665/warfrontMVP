@@ -219,6 +219,17 @@ class SquadRooms:
                 room['game'].input(pid, data)
             return self.state(code, pid)
 
+    def dev(self, code, pid, data):
+        with self.lock:
+            room = self.require(code, pid)
+            if room['status'] != 'active':
+                raise HTTPException(409, 'squad_not_active')
+            try:
+                room['game'].dev_command(pid, **data)
+            except ValueError as error:
+                raise HTTPException(422, str(error))
+            return self.state(code, pid)
+
     def leave(self, pid):
         with self.lock:
             code = self.membership.get(pid)

@@ -14,7 +14,7 @@ def test_gear_equips_and_armor_raises_defense():
     game = RtsGame(['a', 'b'])
     hero = game.heroes['a']
     base = ZODIAC['rat']['armor']
-    assert grant(hero, 'axe') == '' and hero['weapon'] == 'axe'
+    assert grant(hero, 'weapon_pig') == '' and hero['weapon'] == 'weapon_pig'
     assert grant(hero, 'armor') == '' and hero['armor'] == 'armor'
     assert game.stats(hero)['armor'] == pytest.approx(base + ITEMS['armor']['armor'])
     hero['armor'] = 'fitted_armor_rat'
@@ -47,8 +47,8 @@ def test_chest_fitted_armor_fits_the_opener_and_weapons_are_random_zodiac():
 def test_new_gear_goes_to_bag_and_full_inventory_drops_slot_ten():
     game = RtsGame(['a', 'b'])
     hero = game.heroes['a']
-    grant(hero, 'axe')
-    assert grant(hero, 'weapon_ox') == '' and hero['weapon'] == 'axe' and hero['_bag'][0] == 'weapon_ox'
+    grant(hero, 'weapon_pig')
+    assert grant(hero, 'weapon_ox') == '' and hero['weapon'] == 'weapon_pig' and hero['_bag'][0] == 'weapon_ox'
     grant(hero, 'armor')
     for _ in range(BAG_SIZE - 1): grant(hero, 'portal')
     assert all(get_slot(hero, i) for i in range(SLOTS))
@@ -64,10 +64,10 @@ def test_new_gear_goes_to_bag_and_full_inventory_drops_slot_ten():
 def test_using_bag_gear_swaps_with_equipped():
     game = RtsGame(['a', 'b'])
     hero = game.heroes['a']
-    grant(hero, 'axe')
+    grant(hero, 'weapon_pig')
     grant(hero, 'weapon_rat')
     use(game, 'a', 2)
-    assert hero['weapon'] == 'weapon_rat' and hero['_bag'][0] == 'axe'
+    assert hero['weapon'] == 'weapon_rat' and hero['_bag'][0] == 'weapon_pig'
     use(game, 'a', 0)  # equipped slots do nothing when pressed
     assert hero['weapon'] == 'weapon_rat'
 
@@ -76,17 +76,17 @@ def test_ctrl_drop_puts_item_on_ground_for_others():
     game = RtsGame(['a', 'b'])
     hero, other = game.heroes['a'], game.heroes['b']
     hero.update(x=3200., y=3200.)
-    grant(hero, 'axe')
+    grant(hero, 'weapon_pig')
     game.input('a', dict(sequence=hero['sequence'] + 1, drop=0))
     game.tick(.05)
-    assert hero['weapon'] == '' and game.ground_public(m.OUTDOOR)[0]['name'] == '도끼'
+    assert hero['weapon'] == '' and game.ground_public(m.OUTDOOR)[0]['name'] == '돼지꼬리'
     game.tick(.05)
     assert hero['weapon'] == ''  # the dropper standing on it does not re-pick it
     seen = game.snapshot('b', 'R', 0)['ground_items']
-    assert [g['item'] for g in seen] == ['axe']
+    assert [g['item'] for g in seen] == ['weapon_pig']
     other.update(x=3200., y=3200., floor=m.OUTDOOR)
     game.tick(.05)
-    assert other['weapon'] == 'axe' and game.ground == []
+    assert other['weapon'] == 'weapon_pig' and game.ground == []
 
 
 def test_dropper_can_pick_up_again_after_walking_away():
@@ -253,10 +253,10 @@ def test_identical_gear_stacks_to_silver_then_gold():
 def test_bag_gear_stacks_too_and_armor_scales():
     game = RtsGame(['a', 'b'])
     hero = game.heroes['a']
-    grant(hero, 'axe')
+    grant(hero, 'weapon_pig')
     grant(hero, 'weapon_dog')
     grant(hero, 'weapon_dog')
-    assert hero['weapon'] == 'axe' and hero['_bag'][0] == 'weapon_dog*2'
+    assert hero['weapon'] == 'weapon_pig' and hero['_bag'][0] == 'weapon_dog*2'
     grant(hero, 'armor')
     grant(hero, 'armor')
     assert game.stats(hero)['armor'] == pytest.approx(ZODIAC['rat']['armor'] + ITEMS['armor']['armor'] * 2)
@@ -266,20 +266,12 @@ def test_dropped_stack_keeps_its_tier_and_merges_on_pickup():
     game = RtsGame(['a', 'b'])
     hero, other = game.heroes['a'], game.heroes['b']
     hero.update(x=3200., y=3200.)
-    grant(hero, 'axe')
-    grant(hero, 'axe')
+    grant(hero, 'weapon_pig')
+    grant(hero, 'weapon_pig')
     game.input('a', dict(sequence=hero['sequence'] + 1, drop=0))
     game.tick(.05)
-    assert game.ground_public(m.OUTDOOR)[0]['name'] == '도끼 x2'
-    grant(other, 'axe')
+    assert game.ground_public(m.OUTDOOR)[0]['name'] == '돼지꼬리 x2'
+    grant(other, 'weapon_pig')
     other.update(x=3200., y=3200., floor=m.OUTDOOR)
     game.tick(.05)
-    assert other['weapon'] == 'axe*3'
-
-
-def test_axe_sits_between_own_and_foreign_zodiac_weapon_and_stacks():
-    game = RtsGame(['a', 'b'])
-    hero = game.heroes['a']
-    attack = lambda weapon: (hero.update(weapon=weapon), game.stats(hero)['attack'])[1]
-    assert attack('weapon_ox') < attack('axe') < attack('weapon_rat')
-    assert attack('axe*3') - attack('') == pytest.approx(3 * (attack('axe') - attack('')))
+    assert other['weapon'] == 'weapon_pig*3'

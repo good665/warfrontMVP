@@ -1,5 +1,6 @@
 from typing import Literal
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
+from .config import settings
 from pydantic import BaseModel, ConfigDict, Field
 from .online_routes import online_player
 from .squad_rooms import squad_rooms
@@ -84,10 +85,10 @@ def leave(payload: EmptyRequest, pid: str = Depends(online_player)):
     return squad_rooms.leave(pid)
 
 
-# Static layout; registered before '/{code}' so 'map' is not taken as a room code.
+# Static layout per mode (1:1 adds the corner manors); registered before '/{code}' so 'map' is not taken as a room code.
 @router.get('/map')
-def squad_map():
-    return map_payload()
+def squad_map(team_size: int = Query(1, ge=1, le=2)):
+    return map_payload(team_size)
 
 
 @router.get('/{code}')
@@ -98,6 +99,22 @@ def state(code: str, pid: str = Depends(online_player)):
 @router.post('/{code}/input')
 def control(code: str, payload: SquadInput, pid: str = Depends(online_player)):
     return squad_rooms.input(code, pid, payload.model_dump())
+
+
+class SquadDev(EmptyRequest):
+    action: Literal['teleport', 'give']
+    item: str = Field(default='', max_length=40)
+    floor: int = Field(default=1, ge=1, le=64)
+    x: float = Field(default=0, ge=0, le=6400)
+    y: float = Field(default=0, ge=0, le=6400)
+
+
+# Developer panel; answers 404 unless SQUAD_DEV_TOOLS is on (never in prod, see Settings).
+@router.post('/{code}/dev')
+def dev(code: str, payload: SquadDev, pid: str = Depends(online_player)):
+    if not settings.squad_dev_tools:
+        raise HTTPException(404, 'Not Found')
+    return squad_rooms.dev(code, pid, payload.model_dump())
 
 
 @router.post('/{code}/pause')

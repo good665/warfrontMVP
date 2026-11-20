@@ -4,17 +4,18 @@ Inventory is 10 numbered slots: 1 = equipped weapon, 2 = equipped armor, 3..10 =
 Bag consumables are one use. Using a bag weapon/armor swaps it with the equipped one. With no room
 the item in slot 10 is dropped to make space; Ctrl+number drops a slot on the ground, where anyone
 with room can pick it up. Curses fire the moment they are picked up and hit every enemy hero.
-The axe's wall breaking is still a later phase.
+The axe is a bag consumable: using it takes an axe out for one swing (the 'Axe' clip, AXE['swing'] seconds, hero
+free to move) that smashes every manor furniture piece it reaches from first chop to last (rts_map.PROPS); half the
+pieces drop 3 random items.
 """
 import math
-from .rts_map import CELL, DOORS, EXTENT, INTERIORS, OUTDOOR, RECTS, blocked, cell
+from .rts_map import CELL, DOORS, EXTENT, INTERIORS, MANOR_FLOORS, OUTDOOR, PROPS, RECTS, SOLID_PROPS, blocked, cell, is_door
 from .rts_path import nearest_open
 from .zodiac_rules import ZODIAC
 
 # shortcut: armor and weapon values are placeholders ("미정" in the design), tune after playtests.
 ITEMS = {
-    # Between a zodiac weapon on its own character (+10) and on someone else (+5).
-    'axe': dict(name='도끼', slot='weapon', attack=7.),
+    'axe': dict(name='도끼', slot='bag'),
     'armor': dict(name='갑옷', slot='armor', armor=20.),
     'portal': dict(name='포탈', slot='bag'),
     'portal_plus': dict(name='업그레이드 포탈', slot='bag'),
@@ -46,6 +47,8 @@ PORTAL_GUARD = 3.
 TOP = dict(time=10., orbit=60., spin=3., radius=70., damage=15., every=.5, reach=650.)
 BALL = dict(speed=700., radius=25., damage=20., every=.5, bounces=10, life=12.)
 WHIP_REACH = 350.
+# shortcut: loot odds are first guesses, tune after playtests. swing = Unity's 'Axe' clip time (ZodiacHumanoidMotion).
+AXE = dict(swing=1.2, reach=90., drop_chance=.5, drops=3)
 
 
 def get_slot(hero, i):
@@ -140,6 +143,11 @@ class RtsItems:
         if reward == 'zodiac_weapon': return 'weapon_' + self.rng.choice(sorted(WEAPON_NAMES))
         return reward
 
+    def loot_item(self, h):
+        """A chest roll that can lie on the ground: the instant chest buffs (heal/speed/attack) are not items."""
+        while (item := self.chest_reward(h)) not in ITEMS: pass
+        return item
+
     def give(self, h, item):
         """grant() and drop whatever it displaced at the hero's feet."""
         old = grant(h, item)
@@ -207,8 +215,25 @@ class RtsItems:
         h.update(floor=floor, x=x, y=y, protected=max(h['protected'], PORTAL_GUARD), door_cooldown=1.,
                  command='hold', order_x=x, order_y=y, _path=[])
 
+    def dev_command(self, pid, action, item='', floor=OUTDOOR, x=0., y=0.):
+        """Developer panel: receive any item, or jump into an interior / onto open outdoor ground.
+        Only reachable through the route when settings.squad_dev_tools is on."""
+        h = self.heroes[pid]
+        if action == 'give':
+            if item not in ITEMS: raise ValueError('unknown_item')
+            self.give(h, item)
+        elif floor == OUTDOOR:
+            x, y = max(35., min(EXTENT-35, x)), max(35., min(EXTENT-35, y))
+            self.teleport(h, OUTDOOR, *nearest_open(OUTDOOR, x, y, False, self.opened))
+        else:
+            # Arrive where that building's front door drops you; a door that is off this match (2:2 manor) does not count.
+            door = next((d for d in DOORS if d['to_floor'] == floor and d['floor'] == OUTDOOR
+                         and is_door(OUTDOOR, d['cx'], d['cy'], self.opened)), None)
+            if door is None: raise ValueError('unknown_floor')
+            self.teleport(h, floor, door['to_x'], door['to_y'])
+
     def item_portal(self, h, data):
-        floors = sorted(f for f in INTERIORS if f != h['floor'])
+        floors = sorted(f for f in INTERIORS if f != h['floor'] and (self.team_size == 1 or f not in MANOR_FLOORS))
         floor = self.rng.choice(floors)
         door = next(d for d in DOORS if d['to_floor'] == floor)
         self.teleport(h, floor, door['to_x'], door['to_y'])
@@ -234,6 +259,44 @@ class RtsItems:
         self.next_id += 1
         self.items.append(dict(id=f'item-{self.next_id}', kind=kind, owner=h['id'], team=h['team'],
                                floor=h['floor'], x=h['x'], y=h['y'], _hit={}, **extra))
+
+    def item_axe(self, h, data):
+        ax, ay = data.get('aim_x', h['x'] + h['fx']) - h['x'], data.get('aim_y', h['y'] + h['fy']) - h['y']
+        n = math.hypot(ax, ay)
+        if n: h.update(fx=ax / n, fy=ay / n)
+        h['axe_left'] = AXE['swing']  # the axe shows in hand for the swing
+        self.start_action(h, 'axe', AXE['swing'])
+        self.axe_swing(h)  # first chop now; rts_game.hero_tick keeps swinging while axe_left lasts
+
+    def axe_swing(self, h):
+        """Every tick of the swing (axe_left > 0): smash each unbroken piece with a cell in reach on the hero's front
+        half, so anything met from the first chop to the last breaks, even while walking."""
+        if h['floor'] == OUTDOOR: return
+        def in_reach(p):
+            for cx, cy in p['cells']:
+                dx, dy = (cx+.5)*CELL - h['x'], (cy+.5)*CELL - h['y']
+                if math.hypot(dx, dy) <= AXE['reach'] + CELL / 2 and dx*h['fx'] + dy*h['fy'] >= 0: return True
+            return False
+        for prop in PROPS:
+            if prop['floor'] == h['floor'] and prop['id'] not in self.broken_props and in_reach(prop): self.smash(h, prop)
+
+    def smash(self, h, prop):
+        self.broken_props.append(prop['id'])
+        if prop['kind'] not in SOLID_PROPS: self.opened.update((prop['floor'], cx, cy) for cx, cy in prop['cells'])
+        if self.rng.random() < AXE['drop_chance']:
+            # Loot lies on the freed cells (a solid fireplace: the open cells around it, not the hero's own), at cell
+            # centres a step from the hero, so it waits on the floor instead of being swept up by the swing.
+            spots = [tuple(c) for c in prop['cells']]
+            if prop['kind'] in SOLID_PROPS:
+                spots = sorted({(x+a, y+b) for x, y in spots for a in (-1, 0, 1) for b in (-1, 0, 1)} - set(spots)
+                               - {cell(h['x'], h['y'])})
+                spots = [s for s in spots if not blocked(prop['floor'], *s, self.opened)] or [cell(h['x'], h['y'])]
+            for k in range(AXE['drops']):
+                self.next_id += 1
+                sx, sy = spots[k % len(spots)]
+                angle = k * 2 * math.pi / AXE['drops']  # spread so the three name labels do not overlap
+                self.ground.append(dict(id=f'ground-{self.next_id}', item=self.loot_item(h), floor=prop['floor'],
+                                        x=(sx+.5)*CELL + 8*math.cos(angle), y=(sy+.5)*CELL + 8*math.sin(angle), _by=''))
 
     def item_long_whip(self, h, data):
         """Sweeps away the small stone-wall blocks ('wall' rects) in front of the hero."""

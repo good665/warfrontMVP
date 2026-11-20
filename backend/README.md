@@ -29,6 +29,8 @@ uvicorn app.main:app --reload
 
 개발 중 PostgreSQL이 없으면 기본 SQLite 데이터베이스로 실행됩니다. PostgreSQL을 사용하려면 `env.example`을 `.env`로 복사한 뒤 `docker compose up -d`를 실행합니다.
 
+개발자 패널: `.env`에 `SQUAD_DEV_TOOLS=true`를 넣고 서버를 재시작하면, Unity 에디터(또는 개발 빌드)의 RTS 판에서 **F9**로 순간이동(모든 건물 실내·문 앞·본진·광장)과 아이템 지급을 쓸 수 있습니다. `ENVIRONMENT=prod`에서는 켜지지 않습니다.
+
 ## 현재 API
 
 - `GET /health` — 서버 상태

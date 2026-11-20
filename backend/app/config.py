@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     auto_create_tables: bool = True
     public_test_mode: bool = False
     test_access_key: str = ""
+    # 개발자 패널(순간이동·아이템 지급). 로컬 개발에서만 SQUAD_DEV_TOOLS=true 로 켠다.
+    squad_dev_tools: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -29,6 +31,8 @@ class Settings(BaseSettings):
             raise ValueError("JWT_SECRET must be a non-placeholder secret of at least 32 bytes in prod")
         if self.public_test_mode and (self.environment != "prod" or len(self.test_access_key.encode()) < 24):
             raise ValueError("PUBLIC_TEST_MODE requires ENVIRONMENT=prod and a TEST_ACCESS_KEY of at least 24 bytes")
+        if self.squad_dev_tools and self.environment == "prod":
+            raise ValueError("SQUAD_DEV_TOOLS must stay off in prod")
         return self
 
 
