@@ -1,9 +1,0 @@
-{
-  "backup": "C:\\Users\\good6\\Documents\\ChatGPT\\멀티플랫폼 게임 홈페이지 사이트\\.tools\\player-hurt\\backup-20261108-112648",
-  "files": {
-    "script/MmoCombatFeedback.cs": "3bc5feabb31bd9c0c737b38a9f9ebe8de5ecfdc59752dfd2f0886c84b7716292",
-    "script/RetroFantasyScene.cs": "42f9908357acc67d9d356143d0f11a1c17c2f09c6901250c15569026c0393eea",
-    "Editor/PlayerHurtChecks.cs": "6f48e72200742a7aa41590fc5f569039034c08de062740ed0b99262c4b3decc9"
-  },
-  "preserved_existing_meta": true
-}

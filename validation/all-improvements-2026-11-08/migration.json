@@ -1,8 +1,0 @@
-{
-  "database": "local PostgreSQL development database",
-  "backup": "C:\\Users\\good6\\Documents\\ChatGPT\\멀티플랫폼 게임 홈페이지 사이트\\.tools\\all-improvements\\local-postgres-before-20261108-075641.dump",
-  "backup_sha256": "e842deb20015b733f0cb85bf2ee08d6ca68f38e21916340f2a7161335d0546c6",
-  "preserved_avatar_count": 1,
-  "quest_state_column": true,
-  "existing_progression_preserved": true
-}
