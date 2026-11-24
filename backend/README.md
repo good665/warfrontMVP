@@ -260,3 +260,8 @@ switching sets never heals or revives the character.
 
 
 
+
+## Expanded Hanok and passage interiors
+
+Map version squad-map-interiors-2 uses 32x24 Hanok rooms and 48x18 passages (each horizontal dimension doubled). Door cells share portal targets; furniture, aiming bounds and floor spacing match the expanded layout. Restart the backend and create a new match to use the new map. Unity uses the redesigned FBX only when the server layout matches its bundled layout; older server layouts retain their existing rendering.
+

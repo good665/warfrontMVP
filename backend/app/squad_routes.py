@@ -4,7 +4,7 @@ from .config import settings
 from pydantic import BaseModel, ConfigDict, Field
 from .online_routes import online_player
 from .squad_rooms import squad_rooms
-from .rts_map import map_payload
+from .rts_map import AIM_LIMIT, map_payload
 from .database import get_db
 from .models import Player
 from sqlalchemy.orm import Session
@@ -38,10 +38,12 @@ class SquadInput(EmptyRequest):
     sequence: int = Field(ge=0, le=2147483647)
     character: Character = ''
     jump: bool = False
+    super_jump: bool = False  # unlocked super jump slot (R)
+    vehicle: bool = False  # F: ride / leave a 1:1 manor vehicle
     move_x: float = Field(default=0, ge=-1, le=1)
     move_y: float = Field(default=0, ge=-1, le=1)
-    aim_x: float = Field(default=0, ge=-1000, le=8400)  # interiors sit at x 6800..8400
-    aim_y: float = Field(default=0, ge=-1000, le=8400)
+    aim_x: float = Field(default=0, ge=-1000, le=AIM_LIMIT)  # enlarged off-board interiors
+    aim_y: float = Field(default=0, ge=-1000, le=AIM_LIMIT)
     attack: bool = False
     dodge: bool = False
     skill1: bool = False

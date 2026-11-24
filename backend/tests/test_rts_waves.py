@@ -81,3 +81,48 @@ def test_bot_does_not_override_automatic_routes():
     game.tick(30)
     game.bot_input('b')
     assert all(a['command'] == 'wave' for a in waves(game))
+
+
+def test_wave_does_not_walk_back_to_a_waypoint_it_chased_past():
+    game = RtsGame(['a', 'b'])
+    game.tick(30)
+    archer = next(a for a in waves(game) if a['owner_id'] == 'a' and a['kind'] == 'archer')
+    for other in list(game.units.values()):
+        if other is not archer and other['kind'] != 'hero':
+            game.units.pop(other['id']); game.minions.pop(other['id'], None)
+    centre = archer['_waypoints'][1]
+    archer.update(_waypoint=1, x=centre['x'] + 300, y=centre['y'])  # fought its way past the nave entrance
+    enemy = game.heroes['b']
+    enemy.update(x=archer['x'] + 200, y=archer['y'], protected=0)
+    game.wave_tick(archer, .05)
+    enemy.update(x=100, y=6300)  # fight over
+    before = (archer['x'] - centre['x'])**2 + (archer['y'] - centre['y'])**2
+    for _ in range(10): game.wave_tick(archer, .05)
+    assert archer['_waypoint'] == 2
+    assert (archer['x'] - centre['x'])**2 + (archer['y'] - centre['y'])**2 > before  # kept going forward
+
+
+@pytest.mark.parametrize('ids,size', [(['a', 'b'], 1), (['a', 'b', 'c', 'd'], 2)])
+def test_waves_walk_through_the_cathedral_nave(ids, size):
+    from app.rts_map import NAVE, RECTS, SOLID_CELLS, cell
+    x0, y0, x1, y1 = NAVE
+    _, _, top, _, bottom, _ = next(r for r in RECTS if r[0] == 'cathedral')
+    game = RtsGame(ids, team_size=size)
+    game.tick(30)
+    for pid in ids:
+        unit = next(a for a in waves(game) if a['owner_id'] == pid)
+        for other in list(game.units.values()):
+            if other is not unit:
+                game.units.pop(other['id']); game.minions.pop(other['id'], None)
+        west_start = unit['x'] < 3200
+        ends = []
+        for _ in range(1400):
+            game.wave_tick(unit, .05)
+            c = cell(unit['x'], unit['y'])
+            assert c not in SOLID_CELLS
+            if x0 <= c[0] <= x1 and top <= c[1] <= bottom:  # inside the cathedral footprint: only the nave is walkable
+                assert y0 <= c[1] <= y1
+                end = 'west' if c[0] == x0 else 'east' if c[0] == x1 else None
+                if end and end not in ends: ends.append(end)
+        assert ends == (['west', 'east'] if west_start else ['east', 'west'])
+        game = RtsGame(ids, team_size=size); game.tick(30)

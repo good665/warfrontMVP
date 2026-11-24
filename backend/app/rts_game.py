@@ -8,12 +8,14 @@ from .zodiac_rules import ZODIAC, HP_SCALE
 from .rts_map import EXTENT, STARTS, CELL, OUTDOOR, CHESTS, DOOR_AT, MANOR_FLOORS, resource_points, bounds, blocked, is_door, cell, closed_for
 from .squad_items import ITEMS, SLOTS, BAG_SIZE, RtsItems
 from .rts_path import find_path, walk_clear, line_clear, nearest_open
+from .rts_vehicles import RtsVehicles
 
 
-BUFF_NAMES = dict(heal='체력 회복', speed='이동 속도 증가', attack='공격력 증가')  # chest buff text shown to players
+CHEST_RESPAWN = 180.  # seconds until an opened chest can be opened again
+BUFF_NAMES = dict(heal='체력 회복', speed='이동 속도 증가', attack='공격력 증가', super_jump='슈퍼점프')  # chest buff text shown to players
 
 
-class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems):
+class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems, RtsVehicles):
     rts = True
 
     def __init__(self, ids, team_size=1, seed=None):
@@ -30,6 +32,7 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems):
         self.next_id = 0
         self.next_wave = WAVE_INTERVAL
         self.rally_points = {}
+        self.init_vehicles()
         self.chests = {c['id']: dict(c, ready_at=0.) for c in CHESTS if team_size == 1 or c['floor'] not in MANOR_FLOORS}
         for index, pid in enumerate(ids):
             team = index % 2
@@ -44,7 +47,10 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems):
                      sequence=-1, input={}, input_at=-1., command='hold', recruited=True,
                      _pending_actions={}, weapon='', armor='', _bag=['']*BAG_SIZE,
                      curse_attack_left=0., curse_skill_left=0., curse_ultimate_left=0.,
-                     speed_left=0., rally_left=0., door_cooldown=0., attack_left=0., axe_left=0., order_x=h['x'], order_y=h['y'])
+                     speed_left=0., rally_left=0., door_cooldown=0., attack_left=0., axe_left=0., order_x=h['x'], order_y=h['y'],
+                     super_jump=False, super_jump_left=0., super_jump_duration=0., _leap=None,
+                     vehicle='', vehicle_id='', vehicle_left=0., vehicle_hits=0, _vehicle_hit_at=-1.,
+                     portal_left=0., portal_out_left=0., portal_x=0., portal_y=0., _portal_from=None, _portal_to=None)
             self.heroes[pid] = self.units[pid] = h
 
     def all_targets(self):
@@ -106,6 +112,10 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems):
         for action in ('item', 'drop'):  # inventory slot 0..9 to use / drop on the ground
             if 0 <= data.get(action, -1) < SLOTS and hero['hp'] > 0:
                 hero['_pending_actions'].setdefault(action, dict(data=dict(data), expires=self.elapsed + .65))
+        if data.get('vehicle') and hero['hp'] > 0:
+            hero['_pending_actions'].setdefault('vehicle', dict(data=dict(data), expires=self.elapsed + .65))
+        if data.get('super_jump') and hero['super_jump'] and hero['hp'] > 0:
+            hero['_pending_actions'].setdefault('super_jump', dict(data=dict(data), expires=self.elapsed + .65))
         if data.get('move_x') or data.get('move_y'): hero['command'] = 'hold'
         command = data.get('command', 'none')
         if command not in ('move', 'attack_move', 'focus', 'hold', 'gather', 'retreat'): return
@@ -126,21 +136,24 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems):
         return a['floor'] == b['floor'] and line_clear(a['floor'], a['x'], a['y'], b['x'], b['y'], self.opened)
 
     def interact(self, h):
-        """Doors move heroes between floors; chests grant one random 60s-respawning reward."""
+        """Doors move heroes between floors; chests grant one random reward and respawn after CHEST_RESPAWN."""
         door = DOOR_AT.get((h['floor'], *cell(h['x'], h['y'])))
-        if door and h['door_cooldown'] <= 0 and is_door(h['floor'], *cell(h['x'], h['y']), self.opened):
+        if door and not self.riding(h) and h['door_cooldown'] <= 0 and is_door(h['floor'], *cell(h['x'], h['y']), self.opened):
             h.update(floor=door['to_floor'], x=door['to_x'], y=door['to_y'], door_cooldown=1.,
                      command='hold', order_x=door['to_x'], order_y=door['to_y'], _path=[])
             self.event(h, 'door', 60.)
         for chest in self.chests.values():
             if (chest['floor'] == h['floor'] and chest['ready_at'] <= self.elapsed
                     and math.hypot(chest['x']-h['x'], chest['y']-h['y']) <= 40):
-                chest['ready_at'] = self.elapsed + 60.
+                chest['ready_at'] = self.elapsed + CHEST_RESPAWN
                 reward = self.chest_reward(h)
                 if reward in ITEMS: self.give(h, reward)  # a full inventory drops slot 10 on the ground
                 if reward == 'heal': h['hp'] = h['max_hp']
                 elif reward == 'speed': h['speed_left'] = 20.
                 elif reward == 'attack': h['attack_left'] = 30.
+                elif reward == 'super_jump':
+                    h['super_jump'] = True
+                    self.notify(h, '슈퍼점프를 얻었습니다!\nE 옆 칸 또는 R 키로 사용', False)
                 self.event(h, 'chest', 60., text=ITEMS[reward]['name'] if reward in ITEMS else BUFF_NAMES[reward])
         self.pickup(h)
 
@@ -153,6 +166,7 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems):
         focused = next((a for a in enemies if a['id']==unit.get('target_id')), None)
         target = focused or min((a for a in enemies if distance(a,unit)<420 and self.can_hit(unit,a)), key=lambda a:distance(a,unit), default=None)
         hero = unit['kind'] == 'hero'
+        if hero and self.riding(unit): target = None  # riders cannot attack
         reach = ZODIAC[unit['character']]['reach'] if hero else 320 if unit['kind'] == 'archer' else 110
         if target and command != 'move' and command != 'retreat':
             if distance(unit,target) - (target['body_radius'] if hero else 0) <= reach and self.can_hit(unit,target):
@@ -177,20 +191,31 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems):
         home = self.home(h['id'])
         if h['hp'] <= 0:
             if h['respawn_left'] <= 1e-8 and home['hp'] > 0:
-                h.update(hp=h['max_hp'], x=home['x'], y=home['y'], floor=OUTDOOR, protected=3., input={}, poison_left=0., command='hold')
+                h.update(hp=h['max_hp'], x=home['x'], y=home['y'], floor=OUTDOOR, protected=3., input={}, poison_left=0., command='hold',
+                         _leap=None, super_jump_left=0.)
             return
+        if h['_leap']:  # super jump in flight: straight line over anything, nothing else happens until landing
+            x0, y0, x1, y1 = h['_leap']
+            t = 1 - h['super_jump_left'] / h['super_jump_duration']
+            h.update(x=x0 + (x1-x0)*t, y=y0 + (y1-y0)*t)
+            if h['super_jump_left'] <= 0: h.update(_leap=None, order_x=x1, order_y=y1)
+            return
+        if h['_portal_to']: return self.portal_pull(h)  # bus portal: being drawn in
         data = h['input'] if self.elapsed-h['input_at'] <= .35 else {}
         if h['stun_left'] > 0: return
         dx,dy = data.get('move_x',0),data.get('move_y',0)
+        fx0,fy0 = h['fx'],h['fy']
         if h['cast_left'] > 0: dx = dy = 0  # tiger Q/E cast: rooted (no keys, no move orders, no basic attack), can still aim
+        elif h['action_kind'] == 'attack' and h['action_left'] > 0: dx = dy = 0  # basic-attack swing: rooted, can still aim
         elif dx or dy:
             norm=max(1.,math.hypot(dx,dy))
             self.move(h,h['x']+dx/norm*1000,h['y']+dy/norm*1000,self.stats(h)['speed'],dt)
             h['character_locked']=True
         else: self.command_tick(h,dt)
+        if self.riding(h): self.steer(h,fx0,fy0,dt)
         # Running faces the key direction (move() set it); the mouse only turns the hero when standing,
-        # attacking, casting or mid-action, so strikes still go where the player aims.
-        aiming=not (dx or dy) or data.get('attack') or h['action_left']>0 or 'skill1' in h['_pending_actions'] or 'skill2' in h['_pending_actions']
+        # attacking, casting or mid-action, so strikes still go where the player aims. Rides never aim: they keep the driving direction.
+        aiming=not self.riding(h) and (not (dx or dy) or data.get('attack') or h['action_left']>0 or 'skill1' in h['_pending_actions'] or 'skill2' in h['_pending_actions'])
         ax,ay=data.get('aim_x',h['x']+h['fx'])-h['x'],data.get('aim_y',h['y']+h['fy'])-h['y']
         norm=math.hypot(ax,ay)
         if norm and aiming: h.update(fx=ax/norm,fy=ay/norm)
@@ -198,17 +223,20 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems):
             if pending['expires']<self.elapsed: del h['_pending_actions'][action]; continue
             if h.get(action+'_cooldown',0)>0 or (action=='dodge' and h['cast_left']>0): continue
             del h['_pending_actions'][action]
+            if action=='vehicle': self.vehicle_key(h); continue
+            if self.riding(h) and action in ('skill1','skill2','super_jump','dodge','jump'): continue  # riders only drive
             if action in ('skill1','skill2'): self.use_skill(h,action,pending['data'])
             elif action=='item': self.use_item(h,pending['data'])
             elif action=='drop': self.drop_slot(h,pending['data']['drop'])
             elif action=='jump': h.update(jump_left=.65,jump_cooldown=.8)
+            elif action=='super_jump': self.leap(h,pending['data'])  # no cooldown: the 0.9s flight is the only wait
             elif action=='dodge':
                 self.move(h,h['x']+h['fx']*110,h['y']+h['fy']*110,110,1)
                 h.update(dodge_left=.22,dodge_cooldown=3.)
-        if data.get('attack') and h['attack_cooldown']<=0 and h['cast_left']<=0:
+        if data.get('attack') and h['attack_cooldown']<=0 and h['cast_left']<=0 and not self.riding(h):
             h['character_locked']=True
             self.basic_attack(h)
-        if h['axe_left']>0: self.axe_swing(h)
+        if h['axe_left']>0 and not self.riding(h): self.axe_swing(h)
         if home['hp']>0 and h['floor']==home['floor'] and distance(h,home)<240: h['hp']=min(h['max_hp'],h['hp']+8*HP_SCALE*dt)
         self.interact(h)
 
@@ -224,8 +252,10 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems):
                 if source: self.damage(a,a['poison_damage']*min(dt,a['poison_left']),source,'true')
                 a['poison_left']=max(0.,a['poison_left']-dt)
         for h in self.heroes.values():
-            for key in ('speed_left','rally_left','door_cooldown','attack_left','axe_left','curse_attack_left','curse_skill_left','curse_ultimate_left'): h[key]=max(0.,h[key]-dt)
+            for key in ('portal_left','portal_out_left','speed_left','rally_left','door_cooldown','attack_left','axe_left','super_jump_left','curse_attack_left','curse_skill_left','curse_ultimate_left'): h[key]=max(0.,h[key]-dt)
             self.hero_tick(h,dt)
+            self.vehicle_tick(h,dt)
+        self.vehicles_tick()
         for uid,a in list(self.minions.items()):
             if a['hp']<=0: self.minions.pop(uid);self.units.pop(uid)
             elif a['stun_left']<=0:
@@ -261,7 +291,7 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems):
                     players=[self.public(a) for a in self.units.values() if a['team']==team],enemies=[self.public(a) for a in self.all_targets() if a['team']!=team],
                     effects=[dict({k:v for k,v in e.items() if k not in ('expires','started')},age=self.elapsed-e['started']) for e in self.effects],hazards=[],projectiles=[],bombs=[],combat_rules=dict(COMBAT_RULES),obstacles=[],party=dict(code=f'squad-{team}',leader_id=pid,members=[]),
                     chests=[dict(id=c['id'],floor=c['floor'],x=c['x'],y=c['y'],ready=c['ready_at']<=self.elapsed) for c in self.chests.values() if c['floor']==h['floor']],
-                    squad_items=self.items_public(h['floor']),ground_items=self.ground_public(h['floor']),broken_walls=list(self.broken_walls),broken_props=list(self.broken_props))
+                    squad_items=self.items_public(h['floor']),ground_items=self.ground_public(h['floor']),broken_walls=list(self.broken_walls),broken_props=list(self.broken_props),vehicles=self.vehicles_public(h['floor']))
 
     def battle_snapshot(self,pid):
         h=self.heroes[pid]

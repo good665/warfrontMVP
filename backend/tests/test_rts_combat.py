@@ -87,6 +87,23 @@ def test_other_ultimates_do_not_root():
     assert h['cast_left'] == 0
 
 
+def test_basic_attack_roots_hero_for_its_swing():
+    game = RtsGame(['a', 'b'], seed=7)
+    h = game.heroes['a']
+    game.input('a', dict(sequence=1, character='rat'))
+    game.input('a', dict(sequence=2, attack=True, aim_x=h['x'] + 300, aim_y=h['y']))
+    game.tick(.05)
+    start = (h['x'], h['y'])
+    for i in range(4):  # 0.2s of holding D inside the 0.28s swing
+        game.input('a', dict(sequence=3 + i, move_x=1))
+        game.tick(.05)
+    assert (h['x'], h['y']) == start
+    for i in range(4):
+        game.input('a', dict(sequence=10 + i, move_x=1))
+        game.tick(.05)
+    assert h['x'] > start[0]
+
+
 def test_tiger_slash_roots_and_holds_fire_for_its_animation():
     game = RtsGame(['a', 'b'], seed=7)
     h = game.heroes['a']

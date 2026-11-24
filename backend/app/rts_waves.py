@@ -1,11 +1,22 @@
 """Server-owned wave cadence and resumable waypoint routes."""
-from .rts_map import EXTENT
+from .rts_map import EXTENT, CELL, NAVE
 from .rts_combat import distance
 from .rts_spacing import UNIT_SPACING
 from .zodiac_rules import HP_SCALE
 
 WAVE_INTERVAL = 30.
 WAVE_KINDS = ('guard', 'guard', 'guard', 'archer', 'archer')
+
+
+def nave_route(unit, destination):
+    """Crossing the map: in the cathedral end on the unit's side, out the far end. Same side: no detour."""
+    x0, y0, x1, y1 = NAVE
+    y = (y0 + y1 + 1) / 2 * CELL
+    west, east = dict(x=(x0 + .5) * CELL, y=y), dict(x=(x1 + .5) * CELL, y=y)
+    side = unit['x'] < EXTENT / 2
+    if side == (destination['x'] < EXTENT / 2):
+        return []
+    return [west, east] if side else [east, west]
 
 
 class RtsWaves:
@@ -19,8 +30,7 @@ class RtsWaves:
                         y=base['y'] + (200 if base['y'] < EXTENT / 2 else -200))
 
         unit['_wave_destination'] = destination['id']
-        unit['_waypoints'] = [approach(self.home(unit['owner_id'])),
-                              dict(x=EXTENT / 2, y=EXTENT / 2),
+        unit['_waypoints'] = [approach(self.home(unit['owner_id'])), *nave_route(unit, destination),
                               approach(destination), dict(x=destination['x'], y=destination['y'])]
         unit['_waypoint'] = 0
 
@@ -65,7 +75,7 @@ class RtsWaves:
                    and distance(a, unit) < 420 and self.can_hit(unit, a)]
         if enemies:
             # Reuse existing attack-move targeting, without replacing the route.
-            unit['command'] = 'attack_move'
+            unit['command'], unit['_fought'] = 'attack_move', True
             try:
                 self.command_tick(unit, dt)
             finally:
@@ -73,6 +83,10 @@ class RtsWaves:
             return
         route = unit['_waypoints']
         index = unit['_waypoint']
+        if unit.pop('_fought', False):
+            # Chasing during a fight can carry units past a waypoint: count it as done instead of walking back to it.
+            while index < len(route) - 1 and distance(unit, route[index + 1]) < distance(route[index], route[index + 1]):
+                index += 1
         while index < len(route) - 1:
             reached = distance(unit, route[index]) <= UNIT_SPACING + 1
             occupied = any(h['hp'] > 0 and h['id'] in self.units

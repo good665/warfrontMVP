@@ -78,6 +78,8 @@ def test_chest_reward_and_respawn():
     assert game.stats(hero)['attack'] == pytest.approx(m_attack * 1.3)
     hero['x'] += 200
     game.tick(60.)
+    assert state['ready_at'] > game.elapsed  # still closed after one minute
+    game.tick(120.)
     assert state['ready_at'] <= game.elapsed
     world = game.snapshot('a', 'ROOM', 0)
     assert any(x['id'] == chest['id'] and x['ready'] for x in world['chests'])

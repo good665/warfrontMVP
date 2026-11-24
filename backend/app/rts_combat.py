@@ -2,6 +2,7 @@
 import math
 from .zodiac_rules import ZODIAC, DAMAGE_SCALE
 from .squad_items import armor_bonus, weapon_bonus
+from .rts_vehicles import RIDE_SPEED
 
 STAT_KEYS = ('hp', 'attack', 'armor', 'magic_armor', 'speed', 'armor_pen', 'magic_pen', 'lifesteal')
 COMBAT_RULES = dict(attack_reach=145., heavy_reach=210., attack_dot=.35)
@@ -32,6 +33,7 @@ class RtsCombat:
         result.update(health=result['hp'], cooldown=0.)
         result['attack'] += weapon_bonus(h)
         if h['speed_left'] > 0: result['speed'] *= 1.45
+        if h.get('vehicle'): result['speed'] *= RIDE_SPEED[h['vehicle']]
         if h['rally_left'] > 0: result['attack'] *= 1.2
         if h.get('attack_left', 0) > 0: result['attack'] *= 1.3
         result['armor'] += armor_bonus(h)
@@ -59,6 +61,7 @@ class RtsCombat:
         if (target['hp'] <= 0 or target['protected'] > 0 or target['dodge_left'] > 0
                 or source is not None and (source['floor'] != target['floor'] or source['team'] == target['team'])):
             return 0.
+        if target['kind'] == 'hero' and self.vehicle_hit(target, kind): return 0.
         hero_source = source is not None and source['kind'] == 'hero'
         if target['kind'] == 'hero' and kind != 'true':
             magic = kind == 'magic'
@@ -95,12 +98,12 @@ class RtsCombat:
         kind, power = rules[prefix + '_kind'], rules[prefix + '_power']
         h[action + '_cooldown'] = (22. if ultimate else rules['q_cooldown']) * (1. - self.stats(h)['cooldown'])
         h['character_locked'] = True
-        self.start_action(h, 'ultimate' if ultimate else 'skill', .5 if ultimate else .32)
         if h['character'] == 'tiger': h['cast_left'] = TIGER_CAST_SECONDS[action]
         scale = rules[prefix + '_scale']
         ax, ay = data.get('aim_x', h['x'] + h['fx']) - h['x'], data.get('aim_y', h['y'] + h['fy']) - h['y']
         n = math.hypot(ax, ay)
         if n: h.update(fx=ax / n, fy=ay / n)
+        self.start_action(h, 'ultimate' if ultimate else 'skill', .5 if ultimate else .32)
         if kind in ('dash', 'charge'):
             self.move(h, h['x'] + h['fx'] * 280 * scale, h['y'] + h['fy'] * 280 * scale, 280 * scale, 1.)
         if kind in ('shield', 'guard', 'fortify'):

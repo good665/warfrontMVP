@@ -1,4 +1,5 @@
 import math
+import pytest
 
 from app import rts_map as m
 from app.rts_game import RtsGame
@@ -47,7 +48,8 @@ def test_axe_is_one_swing_not_gear():
 def test_map_ships_furniture_that_blocks_walking_but_not_sight():
     props = m.map_payload(1)['props']
     assert props and {p['kind'] for p in props} == {'table', 'chair', 'cabinet', 'fireplace'}
-    assert all(p['floor'] in m.MANOR_FLOORS for p in props)  # hanok and passage rooms have none
+    assert all(p['floor'] in m.INTERIORS for p in props)
+    assert all(any(p['floor'] == floor for p in props) for floor, room in m.INTERIORS.items() if room[3] in ('house', 'passage'))
     p = props[0]
     assert m.blocked(p['floor'], p['cx'], p['cy']) and not m.sight_blocked(p['floor'], p['cx'], p['cy'])
     assert not any(p['floor'] in m.MANOR_FLOORS for p in m.map_payload(2)['props'])  # no manors in 2:2
@@ -79,7 +81,7 @@ def test_fireplace_loot_lands_on_open_floor_away_from_the_hero():
     game.rng.random = lambda: 0.
     use_axe(game, 'a', dict(x=(cx + .5) * m.CELL, y=(cy + .5) * m.CELL))
     loot = [g for g in game.ground if g['floor'] == fire['floor']]
-    assert len(loot) == AXE['drops']
+    assert len(loot) == 1
     assert all(not m.blocked(fire['floor'], *m.cell(g['x'], g['y']), game.opened) for g in loot)
     assert all(m.cell(g['x'], g['y']) != m.cell(hero['x'], hero['y']) for g in loot)
 
@@ -94,25 +96,26 @@ def test_multi_cell_table_breaks_as_one_piece():
     assert all(not m.blocked(table['floor'], cx, cy, game.opened) for cx, cy in table['cells'])
 
 
-def test_swing_smashes_the_aimed_furniture_and_can_drop_three_items():
+def test_swing_smashes_the_aimed_furniture_and_can_drop_one_item():
     game, hero, prop = near_prop()
-    game.rng.random = lambda: 0.  # always the lucky half
+    game.rng.random = lambda: 0.  # always lucky
     use_axe(game, 'a', first_cell(prop))
     assert prop['id'] in game.broken_props and game.snapshot('b', 'R', 0)['broken_props'] == [prop['id']]
     assert not game.closed(hero, prop['x'], prop['y'])
     loot = [g for g in game.ground if g['floor'] == prop['floor']]
-    assert len(loot) == AXE['drops'] and all(list(m.cell(g['x'], g['y'])) in prop['cells'] for g in loot)
+    assert len(loot) == 1 and all(list(m.cell(g['x'], g['y'])) in prop['cells'] for g in loot)
     assert all(g['_by'] == '' for g in loot)  # anyone can grab it, the smasher included
 
 
-def test_loot_skips_instant_chest_buffs_and_snapshots_still_build():
+@pytest.mark.parametrize('roll, item', [(0., 'fitted_armor_pig'), (.0499, 'fitted_armor_pig'), (.05, 'weapon_pig'),
+                                        (.0999, 'weapon_pig'), (.1, None)])
+def test_loot_is_fitted_armor_5_percent_zodiac_weapon_5_percent_else_nothing(roll, item):
     game, hero, prop = near_prop()
-    game.rng.random = lambda: 0.
-    rolls = iter(['heal', 'top', 'speed', 'attack', 'portal', 'long_whip'])
-    game.rng.choice = lambda options: next(rolls)
+    game.rng.random = lambda: roll
+    game.rng.choice = lambda options: 'pig'  # any of the 12 zodiacs
     use_axe(game, 'a', first_cell(prop))
-    assert sorted(g['item'] for g in game.ground) == ['long_whip', 'portal', 'top']
-    assert len(game.snapshot('a', 'R', 0)['ground_items']) == 3
+    assert [g['item'] for g in game.ground] == ([item] if item else [])
+    assert len(game.snapshot('a', 'R', 0)['ground_items']) == (1 if item else 0)
 
 
 def test_unlucky_smash_drops_nothing():

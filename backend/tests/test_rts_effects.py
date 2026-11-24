@@ -14,6 +14,8 @@ def test_skill_visual_identity_direction_and_age(character, action, slot):
     assert (effect['character'], effect['skill']) == (character, slot)
     assert effect['fx'] == pytest.approx(1.)
     assert effect['fy'] == pytest.approx(0.)
+    assert hero['action_fx'] == pytest.approx(effect['fx'])
+    assert hero['action_fy'] == pytest.approx(effect['fy'])
     assert effect['age'] == pytest.approx(0.)
     game.elapsed += .2
     aged = game.snapshot('a', 'TEST', 0)['effects'][-1]

@@ -37,3 +37,16 @@ No established commit history is available yet. Use short imperative commit subj
 ## Security & Configuration
 
 Use `backend/env.example` as the configuration template and keep secrets in a local `.env`; never commit credentials or production data. Avoid committing virtual environments such as `backend/venv/` or `.venv/`.
+
+## Unity 제작 및 검증 사전 허용 (2026-11-21)
+
+사용자는 요청한 Unity 작업을 수행하는 데 필요한 다음 작업을 사전 허용했다. 매번 같은 범위의 확인을 반복하지 않고 적용한다.
+
+- 활성 Unity 프로젝트의 Assets 아래 코드·에셋 제작 및 수정
+- 검증 스크립트 추가 및 검증 코드를 Unity 프로젝트에 적용
+- PNG·FBX 제작 또는 다시 생성
+- 전체 미리보기 생성 및 화면 검증
+- 회귀 검사와 수정한 내용의 검증
+
+기존 코드와 사용자 에셋을 보존하고, 필요한 백업을 유지한다. 이 허용은 운영체제·도구의 접근 제한을 우회하거나 관계없는 파괴적 작업·외부 배포까지 허용하는 의미가 아니다. 접근 제한 때문에 별도 승인이 필요한 경우 한국어로 요청한다.
+

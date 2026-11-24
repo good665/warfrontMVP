@@ -66,7 +66,7 @@ def test_doors_pair_up():
 def test_interiors_off_board():
     for floor in range(2, 10):
         x0, y0, x1, y1 = m.bounds(floor)
-        assert x0 >= 6800 and x1 <= 8400
+        assert x0 >= 6800 and x1 <= 9200
     assert len(m.map_payload()['interiors']) == 8
 
 

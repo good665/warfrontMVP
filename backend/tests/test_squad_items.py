@@ -33,12 +33,13 @@ def test_zodiac_weapon_is_halved_on_another_character():
     assert {ITEMS['weapon_' + z]['name'] for z in ZODIAC} >= {'쥐 이빨', '발톱', '당근', '돼지꼬리'}
 
 
-def test_chest_fitted_armor_fits_the_opener_and_weapons_are_random_zodiac():
+def test_chest_fitted_armor_and_weapons_are_random_zodiac():
     game = RtsGame(['a', 'b'])
     hero = game.heroes['a']
     hero['character'] = 'dog'
-    game.rng.choice = lambda options: 'fitted_armor'
-    assert game.chest_reward(hero) == 'fitted_armor_dog'
+    picks = iter(['fitted_armor', 'snake'])  # not cut for the opener: any of the 12
+    game.rng.choice = lambda options: next(picks)
+    assert game.chest_reward(hero) == 'fitted_armor_snake'
     picks = iter(['zodiac_weapon', 'monkey'])
     game.rng.choice = lambda options: next(picks)
     assert game.chest_reward(hero) == 'weapon_monkey'
@@ -182,7 +183,7 @@ def test_top_spins_on_target_for_ten_seconds():
     assert game.items == []
 
 
-def test_bouncy_ball_bounces_ten_times_then_vanishes():
+def test_bouncy_ball_bounces_thirty_times_then_vanishes():
     game = RtsGame(['a', 'b'])
     hero = game.heroes['a']
     door = next(d for d in m.DOORS if d['floor'] == m.OUTDOOR)
@@ -191,13 +192,51 @@ def test_bouncy_ball_bounces_ten_times_then_vanishes():
     use(game, 'a', 2)
     ball = game.items[0]
     seen = 0
-    for _ in range(400):
+    for _ in range(4000):
         seen = max(seen, ball['bounces'])
         game.tick(.05)
         if not game.items: break
         x0, y0, x1, y1 = m.bounds(ball['floor'])
         assert x0 <= ball['x'] <= x1 and y0 <= ball['y'] <= y1
-    assert game.items == [] and seen >= 9
+    assert game.items == [] and ball['bounces'] == 30 and seen >= 29
+
+
+def test_bouncy_ball_outdoors_is_not_consumed():
+    game = RtsGame(['a', 'b'])
+    hero = game.heroes['a']
+    assert hero['floor'] == m.OUTDOOR
+    grant(hero, 'bouncy_ball')
+    use(game, 'a', 2)
+    assert get_slot(hero, 2) == 'bouncy_ball'
+    assert game.items == []
+    assert '실내' in hero.get('_notice', '')
+
+
+@pytest.mark.parametrize('dx,dy', [(1, 0), (-1, 0), (0, 1), (0, -1),
+                                  (1, 1), (-1, 1), (1, -1), (-1, -1), (.3, .8)])
+def test_bouncy_ball_uses_aim_in_every_direction_even_while_facing_elsewhere(dx, dy):
+    game = RtsGame(['a', 'b'])
+    hero = game.heroes['a']
+    door = next(d for d in m.DOORS if d['floor'] == m.OUTDOOR)
+    hero.update(floor=door['to_floor'], x=door['to_x'], y=door['to_y'], fx=-1., fy=0.)
+    grant(hero, 'bouncy_ball')
+    game.use_item(hero, dict(item=2, aim_x=hero['x']+dx*100, aim_y=hero['y']+dy*100))
+    ball = game.items[0]
+    norm = math.hypot(dx, dy)
+    assert ball['vx'] == pytest.approx(dx/norm*700)
+    assert ball['vy'] == pytest.approx(dy/norm*700)
+
+
+def test_bouncy_ball_lifetime_allows_thirty_bounces_in_largest_room():
+    from app.squad_items import BALL
+    game = RtsGame(['a', 'b'])
+    hero = game.heroes['a']
+    floor = max(m.INTERIORS, key=lambda f: math.hypot(m.bounds(f)[2]-m.bounds(f)[0], m.bounds(f)[3]-m.bounds(f)[1]))
+    x0, y0, x1, y1 = m.bounds(floor)
+    hero.update(floor=floor, x=(x0+x1)/2, y=(y0+y1)/2)
+    grant(hero, 'bouncy_ball')
+    game.use_item(hero, dict(item=2))
+    assert game.items[0]['left'] > 30*math.hypot(x1-x0, y1-y0)/BALL['speed']
 
 
 def test_long_whip_blows_away_stone_wall_block():
@@ -275,3 +314,108 @@ def test_dropped_stack_keeps_its_tier_and_merges_on_pickup():
     other.update(x=3200., y=3200., floor=m.OUTDOOR)
     game.tick(.05)
     assert other['weapon'] == 'weapon_pig*3'
+
+
+def land(game, pid):
+    for _ in range(30): game.tick(.05)
+    return game.heroes[pid]
+
+
+def super_jump(game, pid, **extra):
+    hero = game.heroes[pid]
+    game.input(pid, dict(sequence=hero['sequence'] + 1, super_jump=True, **extra))
+    game.tick(.05)
+
+
+@pytest.mark.parametrize('start,obstacle', [
+    ((600., 1240.), (600., 1500.)),     # over the stone wall block (8..15, 26..33)
+    ((600., 2650.), (600., 2800.)),     # over the river (rows 54..57)
+    ((1500., 380.), (1500., 550.)),     # over the house (26..33, 8..15)
+])
+def test_super_jump_leaps_the_way_the_hero_runs(start, obstacle):
+    game = RtsGame(['a', 'b'])
+    hero = game.heroes['a']
+    hero.update(x=start[0], y=start[1], super_jump=True)
+    assert game.closed(hero, *obstacle)
+    # running down (+y) while the mouse points the other way: the keys decide
+    super_jump(game, 'a', move_x=0, move_y=1, aim_x=start[0], aim_y=0.)
+    assert hero['super_jump_left'] > 0
+    assert 'super_jump_left' in game.public(hero) and '_leap' not in game.public(hero)
+    hero = land(game, 'a')
+    assert hero['_leap'] is None and hero['super_jump_left'] == 0
+    assert (hero['y'] - obstacle[1]) * (obstacle[1] - start[1]) > 0  # landed past the obstacle
+    assert not game.closed(hero, hero['x'], hero['y']) and not m.is_door(1, *m.cell(hero['x'], hero['y']))
+
+
+def test_super_jump_ignores_movement_mid_air_and_lands_short_of_the_board_edge():
+    game = RtsGame(['a', 'b'])
+    hero = game.heroes['a']
+    hero.update(x=100., y=600., fx=-1., fy=0., super_jump=True)  # standing still: jumps the way it faces
+    super_jump(game, 'a')
+    game.input('a', dict(sequence=hero['sequence'] + 1, move_x=0, move_y=1))
+    game.tick(.05)
+    assert hero['y'] == pytest.approx(600.)  # keys do nothing in flight
+    hero = land(game, 'a')
+    assert hero['x'] == pytest.approx(35.) and hero['y'] == pytest.approx(600.)
+
+
+def test_super_jump_is_locked_until_a_chest_then_reusable_right_after_landing():
+    game = RtsGame(['a', 'b'])
+    hero = game.heroes['a']
+    super_jump(game, 'a')
+    assert hero['super_jump_left'] == 0  # not unlocked yet
+    open_chest(game, 'a', 'super_jump')
+    assert hero['super_jump'] and hero['_bag'] == EMPTY and '슈퍼점프' in game.battle_snapshot('a')['notice']
+    assert game.public(hero)['super_jump']
+    hero.update(x=1500., y=1500.)
+    super_jump(game, 'a', move_x=1)
+    hero = land(game, 'a')
+    super_jump(game, 'a', move_x=1)  # no cooldown: leaps again as soon as it lands
+    assert hero['super_jump_left'] > 0 and hero['super_jump']
+
+
+def test_owned_super_jump_is_not_rolled_again_and_never_lies_on_the_ground():
+    game = RtsGame(['a', 'b'])
+    hero = game.heroes['a']
+    hero['super_jump'] = True
+    picks = iter(['super_jump', 'heal'])
+    game.rng.choice = lambda options: next(picks)
+    assert game.chest_reward(hero) == 'heal'
+    assert 'super_jump' not in ITEMS
+
+
+def test_top_aimed_past_an_interior_wall_lands_inside_the_room():
+    from app import rts_map as m
+    game = RtsGame(['a', 'b'])
+    hero = game.heroes['a']
+    floor = next(f for f, room in m.INTERIORS.items() if room[3] == 'passage')
+    door = next(d for d in m.DOORS if d['to_floor'] == floor)
+    hero.update(floor=floor, x=door['to_x'], y=door['to_y'])
+    grant(hero, 'top')
+    slot = hero['_bag'].index('top') + 2  # slots 0-1 are weapon and armor
+    game.input('a', dict(sequence=hero['sequence'] + 1, item=slot, aim_x=hero['x'], aim_y=hero['y'] - 2000))  # far past the north wall
+    game.tick(.05)
+    top = next(i for i in game.items if i['kind'] == 'top')
+    assert top['floor'] == floor and not m.blocked(floor, *m.cell(top['cx'], top['cy']))
+
+
+def test_bouncy_ball_rebounds_in_all_eight_directions_not_one_line():
+    game = RtsGame(['a', 'b'], seed=5)
+    hero = game.heroes['a']
+    door = next(d for d in m.DOORS if d['floor'] == m.OUTDOOR)
+    hero.update(floor=door['to_floor'], x=door['to_x'], y=door['to_y'])
+    grant(hero, 'bouncy_ball')
+    game.use_item(hero, dict(item=2, aim_x=hero['x'] + 100, aim_y=hero['y']))  # thrown straight sideways
+    ball = game.items[0]
+    headings, last = set(), 0
+    for _ in range(4000):
+        game.tick(.05)
+        if not game.items: break
+        if ball['bounces'] != last:
+            last = ball['bounces']
+            assert math.hypot(ball['vx'], ball['vy']) == pytest.approx(700)
+            angle = math.degrees(math.atan2(ball['vy'], ball['vx'])) % 360
+            assert min(angle % 45, 45 - angle % 45) < 1e-6  # one of the 8 screen directions
+            headings.add(round(angle) % 360)
+    assert ball['bounces'] == 30
+    assert len(headings) >= 5 and headings & {45, 135, 225, 315} and headings & {90, 270}

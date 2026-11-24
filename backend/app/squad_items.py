@@ -5,11 +5,11 @@ Bag consumables are one use. Using a bag weapon/armor swaps it with the equipped
 the item in slot 10 is dropped to make space; Ctrl+number drops a slot on the ground, where anyone
 with room can pick it up. Curses fire the moment they are picked up and hit every enemy hero.
 The axe is a bag consumable: using it takes an axe out for one swing (the 'Axe' clip, AXE['swing'] seconds, hero
-free to move) that smashes every manor furniture piece it reaches from first chop to last (rts_map.PROPS); half the
-pieces drop 3 random items.
+free to move) that smashes every manor furniture piece it reaches from first chop to last (rts_map.PROPS); each piece
+drops one item: fitted armor (AXE['armor_chance']) or a zodiac weapon (AXE['weapon_chance']), any of the 12, else nothing.
 """
 import math
-from .rts_map import CELL, DOORS, EXTENT, INTERIORS, MANOR_FLOORS, OUTDOOR, PROPS, RECTS, SOLID_PROPS, blocked, cell, is_door
+from .rts_map import CELL, DOORS, bounds, EXTENT, INTERIORS, MANOR_FLOORS, OUTDOOR, PROPS, RECTS, SOLID_PROPS, blocked, cell, is_door
 from .rts_path import nearest_open
 from .zodiac_rules import ZODIAC
 
@@ -32,11 +32,11 @@ WEAPON_NAMES = dict(rat='쥐 이빨', ox='소 뿔', tiger='발톱', rabbit='당�
 WEAPON_ATTACK = 10.
 for _z, _name in WEAPON_NAMES.items():
     ITEMS['weapon_' + _z] = dict(name=_name, slot='weapon', attack=WEAPON_ATTACK, owner=_z)
-    # Fitted armor is cut for whoever opened the chest.
     ITEMS['fitted_armor_' + _z] = dict(name=f'전용 갑옷 ({ZODIAC[_z]["name"]})', slot='armor', armor=60., owner=_z)
-# 'fitted_armor' / 'zodiac_weapon' resolve per opener so the 12 variants do not flood the odds.
+# 'super_jump' is not an item: a chest unlocks the hero's own super jump slot (next to E) for good.
+# 'fitted_armor' / 'zodiac_weapon' each take one pool slot, then pick one of the 12 zodiac variants at random.
 CHEST_POOL = ('heal', 'speed', 'attack', 'axe', 'armor', 'fitted_armor', 'zodiac_weapon', 'portal', 'portal_plus',
-              'top', 'bouncy_ball', 'long_whip', 'curse_attack', 'curse_skill', 'curse_ultimate')
+              'top', 'bouncy_ball', 'long_whip', 'super_jump', 'curse_attack', 'curse_skill', 'curse_ultimate')
 SLOTS = 10
 BAG_SIZE = SLOTS - 2
 PICKUP_RADIUS = 40.
@@ -45,10 +45,13 @@ CURSE_TARGET = dict(curse_attack='일반공격', curse_skill='스킬', curse_ult
 PORTAL_GUARD = 3.
 # shortcut: top/ball damage and whip reach are first guesses, tune after playtests.
 TOP = dict(time=10., orbit=60., spin=3., radius=70., damage=15., every=.5, reach=650.)
-BALL = dict(speed=700., radius=25., damage=20., every=.5, bounces=10, life=12.)
+BALL = dict(speed=700., radius=25., damage=20., every=.5, bounces=30)
+BALL_HEADINGS = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy]  # rebound directions
 WHIP_REACH = 350.
+# reach 12 cells clears every stone wall, the river, the house and the passage (not the 20-cell manors).
+SUPER_JUMP = dict(reach=600., time=.9)
 # shortcut: loot odds are first guesses, tune after playtests. swing = Unity's 'Axe' clip time (ZodiacHumanoidMotion).
-AXE = dict(swing=1.2, reach=90., drop_chance=.5, drops=3)
+AXE = dict(swing=1.2, reach=90., armor_chance=.05, weapon_chance=.05)
 
 
 def get_slot(hero, i):
@@ -139,14 +142,10 @@ class RtsItems:
 
     def chest_reward(self, h):
         reward = self.rng.choice(CHEST_POOL)
-        if reward == 'fitted_armor': return 'fitted_armor_' + h['character']
+        if reward == 'super_jump' and h['super_jump']: return self.chest_reward(h)  # already unlocked: roll again
+        if reward == 'fitted_armor': return 'fitted_armor_' + self.rng.choice(sorted(WEAPON_NAMES))  # any of the 12, like weapons
         if reward == 'zodiac_weapon': return 'weapon_' + self.rng.choice(sorted(WEAPON_NAMES))
         return reward
-
-    def loot_item(self, h):
-        """A chest roll that can lie on the ground: the instant chest buffs (heal/speed/attack) are not items."""
-        while (item := self.chest_reward(h)) not in ITEMS: pass
-        return item
 
     def give(self, h, item):
         """grant() and drop whatever it displaced at the hero's feet."""
@@ -201,6 +200,9 @@ class RtsItems:
         slot = data.get('item', -1)
         if not 2 <= slot < SLOTS or not get_slot(h, slot): return
         item = get_slot(h, slot)
+        if item == 'bouncy_ball' and h['floor'] not in INTERIORS:
+            self.notify(h, '탱탱볼은 실내에서만 사용할 수 있습니다', False)
+            return  # Rejected uses keep the consumable in its original bag slot.
         kind = info(item)['slot']
         if kind in ('weapon', 'armor'):
             gear = 0 if kind == 'weapon' else 1
@@ -219,7 +221,9 @@ class RtsItems:
         """Developer panel: receive any item, or jump into an interior / onto open outdoor ground.
         Only reachable through the route when settings.squad_dev_tools is on."""
         h = self.heroes[pid]
-        if action == 'give':
+        if action == 'give' and item == 'super_jump':
+            h['super_jump'] = True
+        elif action == 'give':
             if item not in ITEMS: raise ValueError('unknown_item')
             self.give(h, item)
         elif floor == OUTDOOR:
@@ -249,11 +253,39 @@ class RtsItems:
         ax, ay = data.get('aim_x', h['x']) - h['x'], data.get('aim_y', h['y']) - h['y']
         n = math.hypot(ax, ay)
         k = min(1., TOP['reach'] / n) if n else 0.
-        self.spawn_item(h, 'top', cx=h['x'] + ax*k, cy=h['y'] + ay*k, left=TOP['time'])
+        # Aimed into a wall or past a room's edge (interiors are small): spin on the nearest open floor of that level.
+        cx, cy = nearest_open(h['floor'], h['x'] + ax*k, h['y'] + ay*k, False, self.opened)
+        self.spawn_item(h, 'top', cx=cx, cy=cy, left=TOP['time'])
 
     def item_bouncy_ball(self, h, data):
-        self.spawn_item(h, 'bouncy_ball', vx=h['fx']*BALL['speed'], vy=h['fy']*BALL['speed'],
-                        bounces=0, left=BALL['life'])
+        if h['floor'] not in INTERIORS: return
+        ax = data.get('aim_x', h['x']) - h['x']
+        ay = data.get('aim_y', h['y']) - h['y']
+        norm = math.hypot(ax, ay)
+        if norm < .001:
+            ax, ay = h['fx'], h['fy']
+            norm = math.hypot(ax, ay)
+        if norm < .001: ax, ay, norm = 0., -1., 1.
+        x0, y0, x1, y1 = bounds(h['floor'])
+        # A safety lifetime longer than 30 full room diagonals: expire on bounce 30,
+        # including in the largest manor, rather than the old fixed 12-second timer.
+        lifetime = (BALL['bounces'] + 1) * math.hypot(x1-x0, y1-y0) / BALL['speed'] + 1.
+        self.spawn_item(h, 'bouncy_ball', vx=ax/norm*BALL['speed'], vy=ay/norm*BALL['speed'],
+                        bounces=0, left=lifetime)
+
+    def ball_rebound(self, item, wall_x, wall_y):
+        """Off a wall in a random one of the 8 directions (sides, up/down, diagonals) that leads away from it and into
+        open floor, so the ball crosses the whole room instead of ping-ponging on one line."""
+        away_x = -math.copysign(1, item['vx']) if wall_x else 0
+        away_y = -math.copysign(1, item['vy']) if wall_y else 0
+        step = CELL * .6
+        options = [(dx, dy) for dx, dy in BALL_HEADINGS if dx*away_x + dy*away_y > 0
+                   and not blocked(item['floor'], *cell(item['x'] + dx*step, item['y'] + dy*step), self.opened)]
+        if not options:  # boxed in: plain reflection
+            options = [(-item['vx'] if wall_x else item['vx'], -item['vy'] if wall_y else item['vy'])]
+        dx, dy = self.rng.choice(options)
+        n = math.hypot(dx, dy)
+        item.update(vx=dx/n*BALL['speed'], vy=dy/n*BALL['speed'])
 
     def spawn_item(self, h, kind, **extra):
         self.next_id += 1
@@ -283,7 +315,9 @@ class RtsItems:
     def smash(self, h, prop):
         self.broken_props.append(prop['id'])
         if prop['kind'] not in SOLID_PROPS: self.opened.update((prop['floor'], cx, cy) for cx, cy in prop['cells'])
-        if self.rng.random() < AXE['drop_chance']:
+        roll = self.rng.random()
+        if roll < AXE['armor_chance'] + AXE['weapon_chance']:
+            item = ('fitted_armor_' if roll < AXE['armor_chance'] else 'weapon_') + self.rng.choice(sorted(WEAPON_NAMES))
             # Loot lies on the freed cells (a solid fireplace: the open cells around it, not the hero's own), at cell
             # centres a step from the hero, so it waits on the floor instead of being swept up by the swing.
             spots = [tuple(c) for c in prop['cells']]
@@ -291,12 +325,28 @@ class RtsItems:
                 spots = sorted({(x+a, y+b) for x, y in spots for a in (-1, 0, 1) for b in (-1, 0, 1)} - set(spots)
                                - {cell(h['x'], h['y'])})
                 spots = [s for s in spots if not blocked(prop['floor'], *s, self.opened)] or [cell(h['x'], h['y'])]
-            for k in range(AXE['drops']):
-                self.next_id += 1
-                sx, sy = spots[k % len(spots)]
-                angle = k * 2 * math.pi / AXE['drops']  # spread so the three name labels do not overlap
-                self.ground.append(dict(id=f'ground-{self.next_id}', item=self.loot_item(h), floor=prop['floor'],
-                                        x=(sx+.5)*CELL + 8*math.cos(angle), y=(sy+.5)*CELL + 8*math.sin(angle), _by=''))
+            self.next_id += 1
+            sx, sy = spots[0]
+            self.ground.append(dict(id=f'ground-{self.next_id}', item=item, floor=prop['floor'],
+                                    x=(sx+.5)*CELL, y=(sy+.5)*CELL, _by=''))
+
+    def leap(self, h, data):
+        """Super jump slot (R / next to E, unlocked from a chest, no cooldown): leap the way the hero is running (movement keys), else the way it faces, over walls, water and buildings;
+        lands on the farthest open spot within reach.
+        rts_game.hero_tick flies the hero along _leap while super_jump_left lasts (no input, no doors/chests)."""
+        mx, my = data.get('move_x', 0), data.get('move_y', 0)
+        n = math.hypot(mx, my)
+        fx, fy = (mx / n, my / n) if n else (h['fx'], h['fy'])
+        x0, y0, x1, y1 = bounds(h['floor'])
+        tx, ty = h['x'], h['y']
+        for k in range(int(SUPER_JUMP['reach'] // 10), 0, -1):
+            x, y = max(x0, min(x1, h['x'] + fx*k*10)), max(y0, min(y1, h['y'] + fy*k*10))
+            c = cell(x, y)
+            if not blocked(h['floor'], *c, self.opened) and not is_door(h['floor'], *c, self.opened):
+                tx, ty = x, y
+                break
+        h.update(fx=fx, fy=fy, _leap=(h['x'], h['y'], tx, ty), super_jump_left=SUPER_JUMP['time'],
+                 super_jump_duration=SUPER_JUMP['time'], command='hold', _path=[])
 
     def item_long_whip(self, h, data):
         """Sweeps away the small stone-wall blocks ('wall' rects) in front of the hero."""
@@ -320,20 +370,18 @@ class RtsItems:
                             y=item['cy'] + TOP['orbit']*math.sin(age*TOP['spin']))
                 self.item_hits(item, owner, TOP)
                 continue
-            # Ball: sub-steps of at most 20 units; a blocked axis flips its velocity (one bounce).
+            # Ball: sub-steps of at most 20 units; hitting a wall is one bounce.
             steps = max(1, math.ceil(BALL['speed'] * dt / 20))
             for _ in range(steps):
                 nx, ny = item['x'] + item['vx']*dt/steps, item['y'] + item['vy']*dt/steps
                 wall_x = blocked(item['floor'], *cell(nx, item['y']), self.opened)
                 wall_y = blocked(item['floor'], *cell(item['x'], ny), self.opened)
-                if wall_x: item['vx'] = -item['vx']
-                if wall_y: item['vy'] = -item['vy']
                 if not wall_x and not wall_y and blocked(item['floor'], *cell(nx, ny), self.opened):
-                    item['vx'], item['vy'] = -item['vx'], -item['vy']  # corner
-                    wall_x = True
+                    wall_x = wall_y = True  # corner
                 if wall_x or wall_y:
                     item['bounces'] += 1
                     if item['bounces'] >= BALL['bounces']: item['left'] = 0.; break
+                    self.ball_rebound(item, wall_x, wall_y)
                 else:
                     item['x'], item['y'] = nx, ny
             self.item_hits(item, owner, BALL)
