@@ -46,17 +46,17 @@ def test_two_humans_code_join_shared_state_replay_isolation_and_victory(monkeypa
         assert one.post(path, json={'sequence': 3, 'hp': 999}, headers=headers['a']).status_code == 422
         assert one.post(path, json={'sequence': 3, 'character': 'invalid'}, headers=headers['a']).status_code == 422
         assert one.post(path, json={'sequence': 3, 'replace_slot': 9}, headers=headers['a']).status_code == 422
-        # Focus the headquarters so respawning defenders cannot turn this HTTP
+        # Focus b's golden bell (the win condition) so respawning defenders cannot turn this HTTP
         # victory test into an indefinite, balanced attack-move battle.
         game = rooms.rooms[code]['game']
-        goal = game.home('b')
+        goal = next(bell for bell in game.bells if bell['owner_id'] == 'b')
         # Place the attackers at the target to keep this route test fast; damage is real.
         for unit in game.units.values():
             if unit['owner_id'] == 'a':
-                unit.update(x=goal['x']-90, y=goal['y'], hp=100000, max_hp=100000)
+                unit.update(floor=goal['floor'], x=goal['x']-90, y=goal['y'], hp=100000, max_hp=100000)
         assert one.post(path, json={'sequence': 3, 'command': 'focus', 'target_id': goal['id'],
-                                   'unit_ids': [u['id'] for u in game.units.values() if u['owner_id']=='a'],
-                                   'order_x': goal['x'], 'order_y': goal['y']}, headers=headers['a']).status_code == 200
+                                   'unit_ids': [u['id'] for u in game.units.values() if u['owner_id']=='a']},
+                    headers=headers['a']).status_code == 200  # the bell is in an interior, past the outdoor order bounds
         for _ in range(18000):
             now[0] += .05
             if _ % 100 == 0:
@@ -68,7 +68,7 @@ def test_two_humans_code_join_shared_state_replay_isolation_and_victory(monkeypa
         b = two.get('/v1/squad/' + code, headers=headers['b']).json()
         assert a['status'] == b['status'] == 'finished'
         assert a['winner'] == b['winner'] and a['reason'] == b['reason']
-        assert a['reason'] in ('headquarters_destroyed', 'simultaneous_destruction', 'timeout')
+        assert a['reason'] in ('bell_destroyed', 'simultaneous_destruction', 'timeout')
 
 
 def test_quick_match_requires_two_real_players_and_same_new_rules():

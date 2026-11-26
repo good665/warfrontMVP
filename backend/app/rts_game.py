@@ -1,11 +1,11 @@
 """Server-authoritative single-board RTS using existing zodiac skills."""
 import math
 import random
-from .rts_combat import RtsCombat, distance, COMBAT_RULES
+from .rts_combat import RtsCombat, distance, COMBAT_RULES, MAX_LEVEL, xp_next
 from .rts_waves import RtsWaves, WAVE_INTERVAL
 from .rts_spacing import RtsSpacing
 from .zodiac_rules import ZODIAC, HP_SCALE
-from .rts_map import EXTENT, STARTS, CELL, OUTDOOR, CHESTS, DOOR_AT, MANOR_FLOORS, resource_points, bounds, blocked, is_door, cell, closed_for
+from .rts_map import EXTENT, STARTS, CELL, OUTDOOR, CHESTS, DOOR_AT, MANOR_FLOORS, KEEPS, resource_points, bounds, blocked, is_door, cell, closed_for
 from .squad_items import ITEMS, SLOTS, BAG_SIZE, RtsItems
 from .rts_path import find_path, walk_clear, line_clear, nearest_open
 from .rts_vehicles import RtsVehicles
@@ -13,6 +13,9 @@ from .rts_vehicles import RtsVehicles
 
 CHEST_RESPAWN = 180.  # seconds until an opened chest can be opened again
 BUFF_NAMES = dict(heal='체력 회복', speed='이동 속도 증가', attack='공격력 증가', super_jump='슈퍼점프')  # chest buff text shown to players
+
+
+BELL_HP = 1500.  # shortcut: first guess, tune after playtests
 
 
 class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems, RtsVehicles):
@@ -25,13 +28,12 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems, RtsVehicles):
         self.team_size = team_size
         self.elapsed, self.winner, self.reason = 0., None, ''
         self.heroes, self.units, self.minions, self.monsters = {}, {}, {}, {}
-        self.bases, self.camps, self.effects, self.pings = [], [], [], []
+        self.bases, self.camps, self.effects, self.bells = [], [], [], []
         self.bombs, self.projectiles, self.items, self.ground = [], [], [], []
         # long whip destroys outdoor wall blocks; 2:2 starts with the 1:1-only manors opened (absent)
         self.opened, self.broken_walls, self.broken_props = closed_for(team_size), [], []
         self.next_id = 0
         self.next_wave = WAVE_INTERVAL
-        self.rally_points = {}
         self.init_vehicles()
         self.chests = {c['id']: dict(c, ready_at=0.) for c in CHESTS if team_size == 1 or c['floor'] not in MANOR_FLOORS}
         for index, pid in enumerate(ids):
@@ -43,7 +45,7 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems, RtsVehicles):
             self.camps.append(dict(team=team, owner_id=pid, x=x, y=y, radius=180., resources=resource_points(x, y)))
             dx, dy = (1 if x < EXTENT/2 else -1), (1 if y < EXTENT/2 else -1)
             h = self.actor(pid, 'hero', team, x+dx*180, y+dy*180, ZODIAC['rat']['hp'], 1)
-            h.update(owner_id=pid, name='플레이어', character='rat', character_locked=False,
+            h.update(owner_id=pid, name='플레이어', character='rat', character_locked=False, level=1, xp=0,
                      sequence=-1, input={}, input_at=-1., command='hold', recruited=True,
                      _pending_actions={}, weapon='', armor='', _bag=['']*BAG_SIZE,
                      curse_attack_left=0., curse_skill_left=0., curse_ultimate_left=0.,
@@ -52,9 +54,13 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems, RtsVehicles):
                      vehicle='', vehicle_id='', vehicle_left=0., vehicle_hits=0, _vehicle_hit_at=-1.,
                      portal_left=0., portal_out_left=0., portal_x=0., portal_y=0., _portal_from=None, _portal_to=None)
             self.heroes[pid] = self.units[pid] = h
+            keep = KEEPS[index]
+            bell = self.actor('bell-' + pid, 'bell', team, *keep['bell'], BELL_HP, keep['top'])
+            bell['owner_id'] = pid
+            self.bells.append(bell)
 
     def all_targets(self):
-        return [*self.units.values(), *self.bases]
+        return [*self.units.values(), *self.bases, *self.bells]
 
     def closed(self, a, x, y):
         cx, cy = cell(x, y)
@@ -118,17 +124,12 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems, RtsVehicles):
             hero['_pending_actions'].setdefault('super_jump', dict(data=dict(data), expires=self.elapsed + .65))
         if data.get('move_x') or data.get('move_y'): hero['command'] = 'hold'
         command = data.get('command', 'none')
-        if command not in ('move', 'attack_move', 'focus', 'hold', 'gather', 'retreat'): return
+        if command not in ('move', 'attack_move', 'focus', 'hold', 'retreat'): return
         ids = data.get('unit_ids', [])
-        if command == 'gather':
-            self.rally_points[pid] = dict(x=max(35., min(EXTENT-35, data.get('order_x', hero['x']))),
-                                          y=max(35., min(EXTENT-35, data.get('order_y', hero['y']))))
-            ids = [u['id'] for u in self.minions.values() if u['owner_id'] == pid]
-            self.pings.append(dict(owner_id=pid, team=hero['team'], x=data.get('order_x', hero['x']), y=data.get('order_y', hero['y']), expires=self.elapsed+5))
         for uid in set(ids):
             unit = self.units.get(uid)
             if not unit or unit['owner_id'] != pid or unit['hp'] <= 0: continue
-            unit.update(command='attack_move' if command=='gather' else command,
+            unit.update(command=command,
                         order_x=max(35., min(EXTENT-35, data.get('order_x', unit['x']))),
                         order_y=max(35., min(EXTENT-35, data.get('order_y', unit['y']))), target_id=data.get('target_id', ''))
 
@@ -268,31 +269,48 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems, RtsVehicles):
             if base['hp']>0 and enemies and base['attack_cooldown']<=0:
                 self.damage(min(enemies,key=lambda a:distance(a,base)),26,base);base['attack_cooldown']=1.
         self.effects=[e for e in self.effects if e['expires']>self.elapsed]
-        self.pings=[p for p in self.pings if p['expires']>self.elapsed]
-        dead=[team for team in (0,1) if all(b['hp']<=0 for b in self.bases if b['team']==team)]
+        self.open_keeps()
+        # A fallen base only opens its keep; the match is won by breaking the golden bell on the keep's 2F.
+        dead=[team for team in (0,1) if all(b['hp']<=0 for b in self.bells if b['team']==team)]
         if dead:
             self.winner=1-dead[0] if len(dead)==1 else None
-            self.reason='headquarters_destroyed' if len(dead)==1 else 'simultaneous_destruction'
+            self.reason='bell_destroyed' if len(dead)==1 else 'simultaneous_destruction'
         if not self.reason:
             self.update_waves()
         self.separate_units()
 
+    def open_keeps(self):
+        for index, base in enumerate(self.bases):
+            door = ('keep', *KEEPS[index]['door'])
+            if base['hp'] > 0 or door in self.opened: continue
+            self.opened.add(door)
+            for h in self.heroes.values():
+                self.notify(h, '우리 성문이 무너졌습니다!\n성 2층의 황금종을 지키세요' if h['team'] == base['team']
+                            else '적 성문이 무너졌습니다!\n성 안 2층의 황금종을 부수면 승리합니다', True)
+
     def bot_input(self,pid):
         h=self.heroes[pid]
         enemies=[b for b in self.bases if b['team']!=h['team'] and b['hp']>0]
-        if not enemies: return
-        goal=min(enemies,key=lambda b:distance(h,b))
+        if enemies: goal=min(enemies,key=lambda b:distance(h,b))
+        else:  # gate down: walk in, climb the stairs, ring the bell to pieces
+            index=next((i for i,b in enumerate(self.bells) if b['team']!=h['team'] and b['hp']>0),None)
+            if index is None: return
+            keep,bell=KEEPS[index],self.bells[index]
+            if h['floor']==keep['top']: goal=bell
+            else:
+                c=keep['stairs'] if h['floor']==keep['floor'] else keep['door']
+                goal=dict(x=(c[0]+.5)*CELL,y=(c[1]+.5)*CELL)
         self.input(pid,dict(sequence=h['sequence']+1,command='attack_move',unit_ids=[u['id'] for u in self.units.values() if u['owner_id']==pid and u.get('command') != 'wave'],order_x=goal['x'],order_y=goal['y'],aim_x=goal['x'],aim_y=goal['y']))
 
     def snapshot(self,pid,code,now):
         h=self.heroes[pid];team=h['team'];stats=self.stats(h)
         return dict(zone='squad',instance_id=code,world_width=EXTENT,world_height=EXTENT,you_id=pid,last_sequence=h['sequence'],server_time=now,rts=True,floor=h['floor'],
-                    profile=dict(level=1,xp=0,xp_next=100,gold=0,role=0,weapon_rank=0,armor_rank=0,attack=stats['attack'],max_hp=stats['health'],equipped_weapon='',equipped_armor='',quest=None,inventory=[]),
+                    profile=dict(level=h['level'],xp=h['xp'],xp_next=xp_next(h['level']) if h['level']<MAX_LEVEL else 0,gold=0,role=0,weapon_rank=0,armor_rank=0,attack=stats['attack'],max_hp=stats['health'],equipped_weapon='',equipped_armor='',quest=None,inventory=[]),
                     players=[self.public(a) for a in self.units.values() if a['team']==team],enemies=[self.public(a) for a in self.all_targets() if a['team']!=team],
                     effects=[dict({k:v for k,v in e.items() if k not in ('expires','started')},age=self.elapsed-e['started']) for e in self.effects],hazards=[],projectiles=[],bombs=[],combat_rules=dict(COMBAT_RULES),obstacles=[],party=dict(code=f'squad-{team}',leader_id=pid,members=[]),
                     chests=[dict(id=c['id'],floor=c['floor'],x=c['x'],y=c['y'],ready=c['ready_at']<=self.elapsed) for c in self.chests.values() if c['floor']==h['floor']],
-                    squad_items=self.items_public(h['floor']),ground_items=self.ground_public(h['floor']),broken_walls=list(self.broken_walls),broken_props=list(self.broken_props),vehicles=self.vehicles_public(h['floor']))
+                    squad_items=self.items_public(h['floor']),ground_items=self.ground_public(h['floor']),broken_walls=list(self.broken_walls),broken_props=list(self.broken_props),vehicles=self.vehicles_public(h['floor']),bells=[self.public(b) for b in self.bells])
 
     def battle_snapshot(self,pid):
         h=self.heroes[pid]
-        return dict(rts=True,floor=h['floor'],character=h['character'],character_locked=h['character_locked'],next_wave=0. if self.reason else max(0., self.next_wave-self.elapsed),stats=self.stats(h),characters=[dict(id=k,**v) for k,v in ZODIAC.items()],weapon=h['weapon'],armor=h['armor'],bag=list(h['_bag']),notice=h.get('_notice',''),notice_id=h.get('_notice_id',0),notice_alert=h.get('_notice_alert',False),pings=[{k:v for k,v in p.items() if k!='expires'} for p in self.pings if p['team']==h['team']])
+        return dict(rts=True,floor=h['floor'],character=h['character'],character_locked=h['character_locked'],next_wave=0. if self.reason else max(0., self.next_wave-self.elapsed),stats=self.stats(h),characters=[dict(id=k,**v) for k,v in ZODIAC.items()],weapon=h['weapon'],armor=h['armor'],bag=list(h['_bag']),notice=h.get('_notice',''),notice_id=h.get('_notice_id',0),notice_alert=h.get('_notice_alert',False))

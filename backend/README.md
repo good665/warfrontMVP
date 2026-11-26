@@ -6,8 +6,8 @@
 
 - 각 플레이어의 살아 있는 거점에서 경기 시작 30초 후, 이후 30초마다 수호병 3명·궁수 2명이 자동 생성된다. 게임 시작 시에는 영웅과 거점만 배치하며, 미니언은 첫 웨이브부터 생성한다.
 - 자동 병력은 거점 앞 → 중앙 → 적 거점 앞 → 적 거점을 순서대로 이동한다. 주변 적과 교전한 뒤 경로 이동을 재개한다. 목표 거점 파괴 시 가장 가까운 생존 적 거점으로 재지정하며, 경기 종료 후에는 생성하지 않는다.
-- 선택한 병력에 내리는 직접 명령과 G 집결은 자동 이동보다 우선한다. G 집결은 선택 여부와 관계없이 내 미니언 전체에 적용하고, 이후 생성되는 웨이브도 마지막으로 지정한 집결 지점으로 이동한다. 집결 이동 중이나 도착 후 주변 적을 만나면 자동으로 교전하고, 적이 사라지면 집결 지점으로 복귀한다. 이동·집결·교전 중 미니언끼리 약 80 서버 단위(1.6 Unity 단위)의 간격을 유지하고, 영웅을 밀어내지 않고 돌아서 이동한다. 컴퓨터의 일반 호위병 명령은 웨이브 병력의 경로를 덮어쓰지 않는다.
-- 좌클릭/드래그로 선택, 우클릭으로 이동·집중 공격, Ctrl+1~9 부대 지정, Tab 시점 전환, G 집결을 사용한다. 캐릭터의 Q/E 능력, 1인칭 좌클릭 공격·Shift 회피, Space 연출 점프를 유지한다.
+- 선택한 병력에 내리는 직접 명령은 자동 이동보다 우선한다. 이동·교전 중 미니언끼리 약 80 서버 단위(1.6 Unity 단위)의 간격을 유지하고, 영웅을 밀어내지 않고 돌아서 이동한다. 컴퓨터의 일반 호위병 명령은 웨이브 병력의 경로를 덮어쓰지 않는다.
+- 좌클릭/드래그로 선택, 우클릭으로 이동·집중 공격, Ctrl+1~9 부대 지정, Tab 시점 전환을 사용한다. 캐릭터의 Q/E 능력, 1인칭 좌클릭 공격·Shift 회피, Space 연출 점프를 유지한다.
 - `battle.next_wave`가 다음 생성까지 남은 초를 제공한다. 일시정지 중 서버 경기 시간과 웨이브 타이머도 정지한다.
 - 5층 전투와 일반 분대 본진전의 실행 코드·전용 UI·전용 테스트를 삭제했다. RTS가 사용하던 배우 상태·피해·12간지 능력은 `app/rts_combat.py`, 웨이브는 `app/rts_waves.py`로 분리했다. 포털·경기 아이템·구 생산/연구 입력은 더 이상 받지 않는다.
 
@@ -208,8 +208,8 @@ temporary sessions. No new database schema or RPG currency/gear mutations occur.
 
 Each player starts alone. Their own camp at (800,1200) or (2800,1200) recruits a
 guard, archer and healer within radius 120. Lost companions can be replenished at
-the camp after 12 seconds; heroes respawn after 8 seconds. Commands are `gather`,
-`focus`, `hold`, and `retreat` (or `none` for no new command). Inputs carry a
+the camp after 12 seconds; heroes respawn after 8 seconds. Commands are
+`focus`, `hold`, `retreat`, `move` and `attack_move` (or `none` for no new command). Inputs carry a
 monotonically increasing sequence, expire after 0.35 seconds, and cannot modify
 another room. Hold keeps its world anchor and formation; companions route around
 the authoritative obstacles with a collision-padded visibility graph.

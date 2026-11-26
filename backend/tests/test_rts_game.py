@@ -11,7 +11,7 @@ def test_match_starts_with_only_heroes_and_bases(ids, size):
     assert not game.minions
     world = game.snapshot('a', 'ROOM', 0)
     assert all(a['kind'] == 'hero' for a in world['players'])
-    assert all(a['kind'] in ('hero', 'base') for a in world['enemies'])
+    assert all(a['kind'] in ('hero', 'base', 'bell') for a in world['enemies'])
 
 
 def test_automatic_waves_start_after_thirty_seconds():
@@ -34,15 +34,18 @@ def test_commands_only_control_owned_units():
     assert allied.get('order_x') != 3000
 
 
-def test_team_loses_only_when_all_its_bases_destroyed():
+def test_team_loses_only_when_all_its_bells_break():
     game = RtsGame(['a', 'b', 'c', 'd'], team_size=2)
-    bases = [b for b in game.bases if b['team'] == 0]
-    bases[0]['hp'] = 0
+    for base in game.bases: base['hp'] = 0  # fallen gates only open the keeps
     game.tick(.05)
     assert not game.reason
-    bases[1]['hp'] = 0
+    bells = [b for b in game.bells if b['team'] == 0]
+    bells[0]['hp'] = 0
     game.tick(.05)
-    assert game.winner == 1
+    assert not game.reason
+    bells[1]['hp'] = 0
+    game.tick(.05)
+    assert game.winner == 1 and game.reason == 'bell_destroyed'
 
 
 def test_map_bounds_and_dead_owner_base_prevent_respawn():

@@ -62,4 +62,5 @@ def test_redesigned_rooms_have_breakable_furniture_and_three_chests():
     for floor, (_, _, _, kind) in m.INTERIORS.items():
         if kind in ('house', 'passage'):
             assert any(p['floor'] == floor and p['kind'] == 'table' for p in m.PROPS)
-        assert len([c for c in m.CHESTS if c['floor'] == floor]) == 3
+        if floor not in m.KEEP_FLOORS:
+            assert len([c for c in m.CHESTS if c['floor'] == floor]) == 3

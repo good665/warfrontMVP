@@ -46,16 +46,5 @@ def test_four_clients_share_teams_and_cannot_command_allied_units(monkeypatch):
         response = client.post('/v1/squad/' + code + '/input', headers=headers['a'], json={
             'sequence': 2, 'command': 'gather', 'unit_ids': [], 'order_x': 1800, 'order_y': 600,
         })
-        assert response.status_code == 200
-        before = {u['id']: u['x'] for u in response.json()['world']['players'] if u['owner_id'] == 'a' and u['kind'] != 'hero'}
-        game.tick(.5)
-        state = client.get('/v1/squad/' + code, headers=headers['a']).json()
-        for unit in state['world']['players']:
-            if unit['id'] in before:
-                assert unit['command'] == 'attack_move' and unit['x'] > before[unit['id']]
-        game.tick(29.5)
-        state = client.get('/v1/squad/' + code, headers=headers['a']).json()
-        new_wave = [u for u in state['world']['players'] if u['owner_id'] == 'a' and u['kind'] != 'hero' and u['id'] not in before]
-        assert len(new_wave) == 5
-        assert all(u['command'] == 'attack_move' and (u['order_x'], u['order_y']) == (1800, 600) for u in new_wave)
+        assert response.status_code == 422  # the G rally command was removed
         assert game.units[allied]['command'] == 'wave'

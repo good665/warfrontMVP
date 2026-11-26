@@ -4,7 +4,7 @@ import pytest
 
 from app import rts_map as m
 from app.rts_game import RtsGame
-from app.squad_items import BAG_SIZE, CURSE_TIME, ITEMS, SLOTS, TOP, WEAPON_ATTACK, get_slot, grant
+from app.squad_items import BAG_SIZE, CURSE_TIME, ITEMS, SLOTS, TOP, WEAPON_ATTACK, WEAPON_TIER_ATTACK, get_slot, grant, tier
 from app.zodiac_rules import ZODIAC
 
 EMPTY = [''] * BAG_SIZE
@@ -252,6 +252,20 @@ def test_long_whip_blows_away_stone_wall_block():
     assert not game.closed(hero, 600., 1500.)
 
 
+def test_broken_stone_wall_leaves_a_coin_that_becomes_the_pickers_own_weapon():
+    game = RtsGame(['a', 'b'])
+    hero = game.heroes['a']
+    hero.update(x=600., y=1240., fx=0., fy=1., character='tiger')
+    grant(hero, 'long_whip')
+    use(game, 'a', 2)
+    coin = next(g for g in game.ground if g['item'] == 'coin')
+    assert (coin['x'], coin['y']) == (600., 1500.)  # centre of the 8..15 x 26..33 block
+    assert game.ground_public(1)[0]['name'] == '동전'
+    hero.update(x=coin['x'], y=coin['y'])
+    game.pickup(hero)
+    assert hero['weapon'] == 'weapon_tiger' and coin not in game.ground
+
+
 @pytest.mark.parametrize('curse,blocked', [('curse_attack', 'attack'), ('curse_skill', 'skill1'), ('curse_ultimate', 'skill2')])
 def test_curse_fires_on_pickup_and_blocks_enemy(curse, blocked):
     game = RtsGame(['a', 'b'])
@@ -276,17 +290,29 @@ def test_identical_gear_stacks_to_silver_then_gold():
     hero = game.heroes['a']
     hero['character'] = 'tiger'
     base_attack = ZODIAC['tiger']['attack']
+    bronze, silver, gold = WEAPON_TIER_ATTACK
     grant(hero, 'weapon_tiger')
     grant(hero, 'weapon_tiger')
-    assert hero['weapon'] == 'weapon_tiger*2' and hero['_bag'] == EMPTY
-    assert game.stats(hero)['attack'] == pytest.approx(base_attack + WEAPON_ATTACK * 2)
-    grant(hero, 'weapon_tiger')
-    assert hero['weapon'] == 'weapon_tiger*3'
-    assert game.stats(hero)['attack'] == pytest.approx(base_attack + WEAPON_ATTACK * 3)
-    grant(hero, 'weapon_tiger')  # gold is the cap; a fourth starts a new stack
-    assert hero['weapon'] == 'weapon_tiger*3' and hero['_bag'][0] == 'weapon_tiger'
+    assert hero['weapon'] == 'weapon_tiger*2' and hero['_bag'] == EMPTY and tier(hero['weapon']) == 1
+    assert game.stats(hero)['attack'] == pytest.approx(base_attack + bronze)
+    grant(hero, 'weapon_tiger')  # 3 bronze -> silver
+    assert hero['weapon'] == 'weapon_tiger*3' and tier(hero['weapon']) == 2
+    assert game.stats(hero)['attack'] == pytest.approx(base_attack + silver)
+    for _ in range(6): grant(hero, 'weapon_tiger')  # 3 silvers (9 weapons) -> gold
+    assert hero['weapon'] == 'weapon_tiger*9' and tier(hero['weapon']) == 3
+    assert game.stats(hero)['attack'] == pytest.approx(base_attack + gold)
+    assert bronze < silver < gold and gold - silver > silver - bronze  # each grade is a bigger jump
+    grant(hero, 'weapon_tiger')  # gold is the cap; a tenth starts a new stack
+    assert hero['weapon'] == 'weapon_tiger*9' and hero['_bag'][0] == 'weapon_tiger'
     hero['character'] = 'rat'  # someone else's gold weapon: still halved
-    assert game.stats(hero)['attack'] == pytest.approx(ZODIAC['rat']['attack'] + WEAPON_ATTACK * 1.5)
+    assert game.stats(hero)['attack'] == pytest.approx(ZODIAC['rat']['attack'] + gold * .5)
+
+
+def test_armor_keeps_two_for_silver_three_for_gold():
+    assert (tier('armor*2'), tier('armor*3')) == (2, 3)
+    hero = RtsGame(['a', 'b']).heroes['a']
+    for _ in range(4): grant(hero, 'armor')
+    assert hero['armor'] == 'armor*3' and hero['_bag'][0] == 'armor'
 
 
 def test_bag_gear_stacks_too_and_armor_scales():

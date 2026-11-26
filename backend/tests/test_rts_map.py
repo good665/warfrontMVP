@@ -46,7 +46,7 @@ def test_outdoor_connected():
 
 def test_interiors_connected():
     floors = {d['floor'] for d in m.DOORS if d['floor'] != m.OUTDOOR}
-    assert floors == set(range(2, 10))
+    assert floors == set(range(2, 18))  # 6 shared, 2 manors, 4 keeps of two floors
     for floor in floors:
         doors = [(d['cx'], d['cy']) for d in m.DOORS if d['floor'] == floor]
         seen = reachable(floor, doors[0])
@@ -64,10 +64,10 @@ def test_doors_pair_up():
 
 
 def test_interiors_off_board():
-    for floor in range(2, 10):
+    for floor in range(2, 18):
         x0, y0, x1, y1 = m.bounds(floor)
         assert x0 >= 6800 and x1 <= 9200
-    assert len(m.map_payload()['interiors']) == 8
+    assert len(m.map_payload()['interiors']) == 16
 
 
 def test_manors_fill_the_empty_solo_corners_with_doors_facing_inward():
@@ -94,7 +94,7 @@ def test_duo_map_has_no_manors_and_keeps_wall_indices():
     assert not any(r['kind'] == 'manor' for r in duo['outdoor'])
     assert not any(i['kind'] == 'manor' for i in duo['interiors'])
     floors = {i['floor'] for i in duo['interiors']}
-    assert floors == set(range(2, 8)) and all(d['floor'] in floors | {m.OUTDOOR} and d['to_floor'] in floors | {m.OUTDOOR} for d in duo['doors'])
+    assert floors == set(range(2, 8)) | m.KEEP_FLOORS and all(d['floor'] in floors | {m.OUTDOOR} and d['to_floor'] in floors | {m.OUTDOOR} for d in duo['doors'])
     # broken_walls are indices into outdoor, so both modes share the same prefix.
     assert solo['outdoor'][:len(duo['outdoor'])] == duo['outdoor']
     for x, y in m.STARTS[2:]:

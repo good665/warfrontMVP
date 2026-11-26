@@ -51,9 +51,6 @@ class RtsWaves:
                 unit.update(owner_id=base['owner_id'], command='wave', wave=True,
                             order_x=destination['x'], order_y=destination['y'], target_id='')
                 self.set_wave_route(unit, destination)
-                rally = self.rally_points.get(base['owner_id'])
-                if rally is not None:
-                    unit.update(command='attack_move', order_x=rally['x'], order_y=rally['y'])
                 self.units[uid] = self.minions[uid] = unit
 
     def update_waves(self):

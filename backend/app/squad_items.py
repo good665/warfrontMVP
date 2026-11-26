@@ -9,7 +9,7 @@ free to move) that smashes every manor furniture piece it reaches from first cho
 drops one item: fitted armor (AXE['armor_chance']) or a zodiac weapon (AXE['weapon_chance']), any of the 12, else nothing.
 """
 import math
-from .rts_map import CELL, DOORS, bounds, EXTENT, INTERIORS, MANOR_FLOORS, OUTDOOR, PROPS, RECTS, SOLID_PROPS, blocked, cell, is_door
+from .rts_map import CELL, DOORS, bounds, EXTENT, INTERIORS, KEEP_FLOORS, MANOR_FLOORS, OUTDOOR, PROPS, RECTS, SOLID_PROPS, blocked, cell, is_door
 from .rts_path import nearest_open
 from .zodiac_rules import ZODIAC
 
@@ -22,6 +22,8 @@ ITEMS = {
     'top': dict(name='팽이', slot='bag'),
     'bouncy_ball': dict(name='탱탱볼', slot='bag'),
     'long_whip': dict(name='긴 채찍', slot='bag'),
+    # Lies in the garden of a stone-wall block the long whip broke; picking it up gives the hero's own zodiac weapon.
+    'coin': dict(name='동전', slot='coin'),
     'curse_attack': dict(name='일반 공격 금지 저주', slot='curse'),
     'curse_skill': dict(name='스킬 금지 저주', slot='curse'),
     'curse_ultimate': dict(name='필살기 금지 저주', slot='curse'),
@@ -44,7 +46,7 @@ CURSE_TIME = 60.
 CURSE_TARGET = dict(curse_attack='일반공격', curse_skill='스킬', curse_ultimate='필살기')
 PORTAL_GUARD = 3.
 # shortcut: top/ball damage and whip reach are first guesses, tune after playtests.
-TOP = dict(time=10., orbit=60., spin=3., radius=70., damage=15., every=.5, reach=650.)
+TOP = dict(time=10., orbit=60., spin=3., radius=140., damage=25., every=.5, reach=650.)
 BALL = dict(speed=700., radius=25., damage=20., every=.5, bounces=30)
 BALL_HEADINGS = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy]  # rebound directions
 WHIP_REACH = 350.
@@ -64,16 +66,30 @@ def set_slot(hero, i, item):
     else: hero['_bag'][i-2] = item
 
 
-# Identical weapons/armor stack into one slot: 'weapon_rat*2' is silver (x2), '*3' gold (x3).
+# Identical weapons/armor stack into one slot; the suffix counts copies ('weapon_rat*4' = 4 rat teeth).
+# Weapons: 3 copies make silver, 3 silvers (9) make gold. Armor: 2 copies silver, 3 gold.
 MAX_TIER = 3
+WEAPON_TIER_COPIES = (1, 3, 9)
+# shortcut: tier bonuses are first guesses (bronze/silver/gold), tune after playtests.
+WEAPON_TIER_ATTACK = (10., 30., 60.)
 
 
 def base(item):
     return item.split('*')[0]
 
 
-def tier(item):
+def copies(item):
     return int(item.split('*')[1]) if '*' in item else 1
+
+
+def max_copies(item):
+    return WEAPON_TIER_COPIES[-1] if info(item)['slot'] == 'weapon' else MAX_TIER
+
+
+def tier(item):
+    """1 bronze, 2 silver, 3 gold."""
+    if info(item)['slot'] != 'weapon': return copies(item)
+    return sum(copies(item) >= need for need in WEAPON_TIER_COPIES)
 
 
 def info(item):
@@ -81,7 +97,7 @@ def info(item):
 
 
 def item_name(item):
-    return info(item)['name'] + ('' if tier(item) == 1 else f' x{tier(item)}')
+    return info(item)['name'] + ('' if copies(item) == 1 else f' x{copies(item)}')
 
 
 def _slots_for(item):
@@ -93,7 +109,7 @@ def _stack_slot(hero, item):
     """Slot holding the same gear that can absorb this one (equipped slots first), or None."""
     if info(item)['slot'] not in ('weapon', 'armor'): return None
     return next((i for i in range(SLOTS) if get_slot(hero, i) and base(get_slot(hero, i)) == base(item)
-                 and tier(get_slot(hero, i)) + tier(item) <= MAX_TIER), None)
+                 and copies(get_slot(hero, i)) + copies(item) <= max_copies(item)), None)
 
 
 def has_room(hero, item):
@@ -107,7 +123,7 @@ def grant(hero, item):
     if info(item)['slot'] == 'curse': return ''
     i = _stack_slot(hero, item)
     if i is not None:
-        set_slot(hero, i, f'{base(item)}*{tier(get_slot(hero, i)) + tier(item)}')
+        set_slot(hero, i, f'{base(item)}*{copies(get_slot(hero, i)) + copies(item)}')
         return ''
     for i in _slots_for(item):
         if not get_slot(hero, i):
@@ -133,7 +149,7 @@ def armor_bonus(hero):
 def weapon_bonus(hero):
     item = hero.get('weapon', '')
     if not item: return 0.
-    bonus = info(item).get('attack', 0.) * tier(item)
+    bonus = WEAPON_TIER_ATTACK[tier(item) - 1]
     return bonus if _owned(hero, item) else bonus * .5
 
 
@@ -147,8 +163,14 @@ class RtsItems:
         if reward == 'zodiac_weapon': return 'weapon_' + self.rng.choice(sorted(WEAPON_NAMES))
         return reward
 
+    @staticmethod
+    def resolve(h, item):
+        """A coin turns into the picker's own zodiac weapon."""
+        return 'weapon_' + h['character'] if item == 'coin' else item
+
     def give(self, h, item):
         """grant() and drop whatever it displaced at the hero's feet."""
+        item = self.resolve(h, item)
         old = grant(h, item)
         if old: self.place(h, old)
         if info(item)['slot'] == 'curse': self.curse(h, item)
@@ -165,12 +187,13 @@ class RtsItems:
 
     def pickup(self, h):
         for g in list(self.ground):
-            if (g['floor'] != h['floor'] or g['_by'] == h['id'] or not has_room(h, g['item'])
+            item = self.resolve(h, g['item'])
+            if (g['floor'] != h['floor'] or g['_by'] == h['id'] or not has_room(h, item)
                     or math.hypot(g['x']-h['x'], g['y']-h['y']) > PICKUP_RADIUS):
                 continue
             self.ground.remove(g)
-            self.give(h, g['item'])
-            self.event(h, 'pickup', 60., text=item_name(g['item']))
+            self.give(h, item)
+            self.event(h, 'pickup', 60., text=item_name(item))
 
     def ground_tick(self):
         for g in self.ground:
@@ -217,11 +240,17 @@ class RtsItems:
         h.update(floor=floor, x=x, y=y, protected=max(h['protected'], PORTAL_GUARD), door_cooldown=1.,
                  command='hold', order_x=x, order_y=y, _path=[])
 
-    def dev_command(self, pid, action, item='', floor=OUTDOOR, x=0., y=0.):
+    def dev_command(self, pid, action, item='', floor=OUTDOOR, x=0., y=0., level=1):
         """Developer panel: receive any item, or jump into an interior / onto open outdoor ground.
         Only reachable through the route when settings.squad_dev_tools is on."""
         h = self.heroes[pid]
-        if action == 'give' and item == 'super_jump':
+        if action == 'level_up':
+            self.gain_xp(h, 100 + 50 * (h['level'] - 1) - h['xp'])  # exactly the rest of this level
+        elif action == 'set_level':  # preview any level look, up or down
+            h.update(level=level, xp=0)
+            h['max_hp'] = self.stats(h)['health']
+            if h['hp'] > 0: h['hp'] = h['max_hp']
+        elif action == 'give' and item == 'super_jump':
             h['super_jump'] = True
         elif action == 'give':
             if item not in ITEMS: raise ValueError('unknown_item')
@@ -231,13 +260,14 @@ class RtsItems:
             self.teleport(h, OUTDOOR, *nearest_open(OUTDOOR, x, y, False, self.opened))
         else:
             # Arrive where that building's front door drops you; a door that is off this match (2:2 manor) does not count.
-            door = next((d for d in DOORS if d['to_floor'] == floor and d['floor'] == OUTDOOR
-                         and is_door(OUTDOOR, d['cx'], d['cy'], self.opened)), None)
+            # keeps are locked until their base falls; the dev panel walks in anyway (2F: off the stairs)
+            door = next((d for d in DOORS if d['to_floor'] == floor and (floor in KEEP_FLOORS or d['floor'] == OUTDOOR
+                         and is_door(OUTDOOR, d['cx'], d['cy'], self.opened))), None)
             if door is None: raise ValueError('unknown_floor')
             self.teleport(h, floor, door['to_x'], door['to_y'])
 
     def item_portal(self, h, data):
-        floors = sorted(f for f in INTERIORS if f != h['floor'] and (self.team_size == 1 or f not in MANOR_FLOORS))
+        floors = sorted(f for f in INTERIORS if f != h['floor'] and f not in KEEP_FLOORS and (self.team_size == 1 or f not in MANOR_FLOORS))
         floor = self.rng.choice(floors)
         door = next(d for d in DOORS if d['to_floor'] == floor)
         self.teleport(h, floor, door['to_x'], door['to_y'])
@@ -359,6 +389,9 @@ class RtsItems:
             if d <= WHIP_REACH and px*h['fx'] + py*h['fy'] >= d*.3:
                 self.broken_walls.append(i)
                 self.opened.update((x, y) for x in range(x0, x1+1) for y in range(y0, y1+1))
+                self.next_id += 1  # a coin waits in the middle of the garden the wall enclosed
+                self.ground.append(dict(id=f'ground-{self.next_id}', item='coin', floor=OUTDOOR,
+                                        x=(x0+x1+1)/2*CELL, y=(y0+y1+1)/2*CELL, _by=''))
 
     def items_tick(self, dt):
         for item in self.items:

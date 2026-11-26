@@ -110,6 +110,38 @@ MANOR = tuple(''.join(row) for row in _manor)
 PROP_KINDS = dict(T='table', S='chair', K='cabinet', F='fireplace')
 SOLID_PROPS = frozenset({'fireplace'})
 ROWS = dict(house=HOUSE, passage=PASSAGE, manor=MANOR)
+# Keep behind every base gate, closed until that base falls: the 1F stairs 'U' lead up to the 2F (stairs 'W' down),
+# where the team's golden bell hangs. Breaking the bell wins the match.
+# Rows ray-cast in Blender from Resources/Keep/Interior.fbx (Sketchfab scan "The Upper Vestibule", cut at 1 m) over its
+# bounds: the marble corridor is open, the raised stair landings and the void beside them are walls; the door is the
+# corridor's east end and the stairs start at its west landing.
+KEEP_1F = (
+    '##############',
+    '###.##....####',
+    '###..........#',
+    '###..........D',
+    '###..........#',
+    '###...#.....##',
+    '###U##########',
+    '##############',
+    '##############',
+    '##############',
+    '##############',
+    '##############',
+)
+# 2F: the same scan's upper gallery (Resources/Keep/Upper.fbx, floor at 3 m), ray-cast over the same bounds; the open
+# stairwell and the table and chairs are walls, the stairs down arrive at the gallery's south-west edge.
+KEEP_2F = (
+    '##############',
+    '#######..#####',
+    '##.......#####',
+    '##..#....#####',
+    '###.........##',
+    '####..#.....##',
+    '####W#########',
+    *['##############'] * 5,
+)
+KEEP_BELL = (6, 3)  # 2F cell, middle of the gallery
 INTERIOR_X = 136  # cell column of every interior origin (6800 units)
 INTERIOR_STRIDE = 40  # enlarged rooms remain separated in the shared visual world
 
@@ -208,10 +240,32 @@ def _build():
         chests += [dict(id=f'chest-{floor}-{c}-{r}', floor=floor, x=(ox+c+.5)*CELL, y=(oy+r+.5)*CELL)
                    for r, row in enumerate(rows) for c, ch in enumerate(row) if ch == 'C']
         props += _pieces(floor, ox, oy, rows)
-    return frozenset(solid), frozenset(water), doors, chests, props, interiors
+    # Keeps go after the manors so every existing floor number stays the same; one per start, in STARTS order.
+    keeps = []
+    for sx, sy in STARTS:
+        bx, by = int(sx // CELL), int(sy // CELL)
+        f1, f2 = floor + 1, floor + 2
+        floor += 2
+        o1, o2 = (f1-2) * INTERIOR_STRIDE, (f2-2) * INTERIOR_STRIDE
+        interiors[f1], interiors[f2] = (INTERIOR_X, o1, KEEP_1F, 'keep'), (INTERIOR_X, o2, KEEP_2F, 'keep_top')
+        (c, r), _ = _door_groups(KEEP_1F)[0]
+        uc, ur = next((c_, r_) for r_, row in enumerate(KEEP_1F) for c_, ch in enumerate(row) if ch == 'U')
+        wc, wr = next((c_, r_) for r_, row in enumerate(KEEP_2F) for c_, ch in enumerate(row) if ch == 'W')
+        step = lambda rows, c_, r_: next((c_+a, r_+b) for a, b in ((0, -1), (1, 0), (-1, 0), (0, 1))
+                                         if 0 <= r_+b < len(rows) and 0 <= c_+a < len(rows[0]) and rows[r_+b][c_+a] == '.')
+        # open floor beside the door / beside each end of the stairs
+        (ic, ir), (sc, sr), (tc, tr) = step(KEEP_1F, c, r), step(KEEP_1F, uc, ur), step(KEEP_2F, wc, wr)
+        dx, dy = (1 if bx < SIZE // 2 else -1), (1 if by < SIZE // 2 else -1)  # leave toward the board centre
+        doors += [dict(floor=OUTDOOR, cx=bx, cy=by, to_floor=f1, to_x=(INTERIOR_X+ic+.5)*CELL, to_y=(o1+ir+.5)*CELL),
+                  dict(floor=f1, cx=INTERIOR_X+c, cy=o1+r, to_floor=OUTDOOR, to_x=(bx+dx+.5)*CELL, to_y=(by+dy+.5)*CELL),
+                  dict(floor=f1, cx=INTERIOR_X+uc, cy=o1+ur, to_floor=f2, to_x=(INTERIOR_X+tc+.5)*CELL, to_y=(o2+tr+.5)*CELL),
+                  dict(floor=f2, cx=INTERIOR_X+wc, cy=o2+wr, to_floor=f1, to_x=(INTERIOR_X+sc+.5)*CELL, to_y=(o1+sr+.5)*CELL)]
+        keeps.append(dict(door=(bx, by), floor=f1, top=f2, stairs=(INTERIOR_X+uc, o1+ur),
+                          bell=((INTERIOR_X+KEEP_BELL[0]+.5)*CELL, (o2+KEEP_BELL[1]+.5)*CELL)))
+    return frozenset(solid), frozenset(water), doors, chests, props, interiors, keeps
 
 
-SOLID_CELLS, WATER_CELLS, DOORS, CHESTS, PROPS, INTERIORS = _build()
+SOLID_CELLS, WATER_CELLS, DOORS, CHESTS, PROPS, INTERIORS, KEEPS = _build()
 DOOR_AT = {(d['floor'], d['cx'], d['cy']): d for d in DOORS}
 NAVE = next(r[1:5] for r in RECTS if r[0] == 'nave')  # x0, y0, x1, y1 cells
 for _floor, (_ox, _oy, _rows, _) in INTERIORS.items():
@@ -221,6 +275,8 @@ for _floor, (_ox, _oy, _rows, _) in INTERIORS.items():
             DOOR_AT[(_floor, _ox+_a, _oy+_b)] = dict(_door, cx=_ox+_a, cy=_oy+_b)
 MANOR_CELLS = frozenset((x, y) for _, x0, y0, x1, y1, _ in MANOR_RECTS for x in range(x0, x1+1) for y in range(y0, y1+1))
 MANOR_FLOORS = frozenset(f for f, i in INTERIORS.items() if i[3] == 'manor')
+KEEP_FLOORS = frozenset(f for f, i in INTERIORS.items() if i[3] in ('keep', 'keep_top'))
+KEEP_DOORS = frozenset(k['door'] for k in KEEPS)
 
 
 def closed_for(team_size):
@@ -255,7 +311,9 @@ def sight_blocked(floor, cx, cy, opened=frozenset()):
 
 
 def is_door(floor, cx, cy, opened=frozenset()):
-    """A door cell that is 'opened' (2:2 manor footprint) is plain ground."""
+    """A door cell that is 'opened' (2:2 manor footprint) is plain ground; a keep door only works once its base
+    has fallen (('keep', cx, cy) in opened)."""
+    if floor == OUTDOOR and (cx, cy) in KEEP_DOORS: return ('keep', cx, cy) in opened
     return (floor, cx, cy) in DOOR_AT and not (floor == OUTDOOR and (cx, cy) in opened)
 
 

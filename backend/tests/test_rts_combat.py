@@ -1,6 +1,7 @@
 import pytest
 from app.rts_game import RtsGame
 from app.zodiac_rules import ZODIAC
+from app.rts_combat import KNOCKBACK
 
 
 def advance(game, seconds):
@@ -49,6 +50,19 @@ def test_jump_is_visual_and_cannot_prevent_damage():
     assert position == (a['x'], a['y'], a['floor'])
     game.damage(a, 10, b)
     assert a['hp'] < a['max_hp']
+
+
+def test_hit_hero_is_knocked_back_5_units_away_from_the_attacker():
+    game = RtsGame(['a', 'b'], seed=7)
+    a, b = game.heroes.values()
+    a.update(protected=0)
+    b.update(floor=a['floor'], x=a['x'] - 100, y=a['y'])
+    x, y = a['x'], a['y']
+    game.damage(a, 10, b)
+    assert (a['x'], a['y']) == pytest.approx((x + KNOCKBACK, y))
+    assert (game.public(a)['hit_kind'], game.public(a)['hit_by']) == ('physical', b['id'])  # Unity: short hit stop for basic hits, longer for 'magic' skills
+    game.damage(a, 10, b, 'true')  # poison ticks do not push
+    assert (a['x'], a['y']) == pytest.approx((x + KNOCKBACK, y))
 
 
 def test_poison_tick_damage_is_independent_of_simulation_tick_size():

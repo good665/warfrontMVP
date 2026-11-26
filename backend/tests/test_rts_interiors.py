@@ -120,8 +120,8 @@ def test_map_endpoint():
         response = client.get('/v1/squad/map')
         duo = client.get('/v1/squad/map', params=dict(team_size=2))
     assert response.status_code == 200 and duo.status_code == 200
-    assert len(response.json()['interiors']) == 8
-    assert len(duo.json()['interiors']) == 6
+    assert len(response.json()['interiors']) == 16
+    assert len(duo.json()['interiors']) == 6 + 8  # no manors; keeps in both modes
 
 
 def test_manor_door_only_exists_in_one_vs_one():
@@ -149,3 +149,35 @@ def test_hero_order_onto_house_does_not_enter_by_accident():
     for _ in range(100):
         game.tick(.05)
     assert hero['floor'] == m.OUTDOOR
+
+
+def test_keep_opens_when_its_base_falls_and_its_stairs_lead_to_the_bell():
+    game = RtsGame(['a', 'b'])
+    hero, keep, bell = game.heroes['a'], m.KEEPS[1], game.bells[1]  # b's keep and bell
+    assert bell['floor'] == keep['top'] and bell['team'] == 1
+    step_on(hero, m.OUTDOOR, *keep['door'])
+    game.tick(.05)
+    assert hero['floor'] == m.OUTDOOR  # locked while b's gate stands
+    game.bases[1]['hp'] = 0
+    game.tick(.05)
+    assert '성문' in hero['_notice'] and ('keep', *keep['door']) in game.opened
+    hero['door_cooldown'] = 0
+    step_on(hero, m.OUTDOOR, *keep['door'])
+    game.tick(.05)
+    assert hero['floor'] == keep['floor']
+    hero['door_cooldown'] = 0
+    step_on(hero, keep['floor'], *keep['stairs'])
+    game.tick(.05)
+    assert hero['floor'] == keep['top']
+
+
+def test_bot_heads_for_the_keep_door_then_the_stairs_then_the_bell():
+    game = RtsGame(['a', 'bot:1'])
+    bot, keep = game.heroes['bot:1'], m.KEEPS[0]  # a's keep
+    game.bases[0]['hp'] = 0
+    game.tick(.05)
+    for floor, goal in ((m.OUTDOOR, c(*keep['door'])), (keep['floor'], c(*keep['stairs'])),
+                        (keep['top'], (game.bells[0]['x'], game.bells[0]['y']))):
+        bot['floor'] = floor
+        game.bot_input('bot:1')
+        assert (bot['input']['order_x'], bot['input']['order_y']) == goal

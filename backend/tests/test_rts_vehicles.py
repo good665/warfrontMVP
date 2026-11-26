@@ -166,9 +166,10 @@ def test_thrown_off_bike_stays_put_but_a_broken_car_goes_home():
     game = RtsGame(['a', 'b']); quiet(game, ne='bike', sw='car')
     a, b = game.heroes['a'], game.heroes['b']
     board(game, 'a', 'bike-ne')
-    game.damage(a, 10, b)
+    hit_at = a['x'], a['y']
+    game.damage(a, 10, b)  # the rider is knocked back off the dropped bike
     bike = game.vehicles['bike-ne']
-    assert a['vehicle'] == '' and bike['ready_at'] <= game.elapsed and (bike['x'], bike['y']) == (a['x'], a['y'])
+    assert a['vehicle'] == '' and bike['ready_at'] <= game.elapsed and (bike['x'], bike['y']) == hit_at
     board(game, 'b', 'car-sw')
     for _ in range(5): game.damage(b, 50, a); game.tick(.3)
     car = game.vehicles['car-sw']

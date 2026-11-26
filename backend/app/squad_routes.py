@@ -50,7 +50,7 @@ class SquadInput(EmptyRequest):
     skill2: bool = False
     item: int = Field(default=-1, ge=-1, le=9)  # inventory slot to use, -1 = none
     drop: int = Field(default=-1, ge=-1, le=9)  # inventory slot to drop on the ground
-    command: Literal['none', 'gather', 'focus', 'hold', 'retreat', 'move', 'attack_move'] = 'none'
+    command: Literal['none', 'focus', 'hold', 'retreat', 'move', 'attack_move'] = 'none'
     target_id: str = Field(default='', max_length=128)
     order_x: float = Field(default=0, ge=0, le=6400)
     order_y: float = Field(default=0, ge=0, le=6400)
@@ -104,11 +104,12 @@ def control(code: str, payload: SquadInput, pid: str = Depends(online_player)):
 
 
 class SquadDev(EmptyRequest):
-    action: Literal['teleport', 'give']
+    action: Literal['teleport', 'give', 'level_up', 'set_level']
     item: str = Field(default='', max_length=40)
     floor: int = Field(default=1, ge=1, le=64)
     x: float = Field(default=0, ge=0, le=6400)
     y: float = Field(default=0, ge=0, le=6400)
+    level: int = Field(default=1, ge=1, le=10)
 
 
 # Developer panel; answers 404 unless SQUAD_DEV_TOOLS is on (never in prod, see Settings).

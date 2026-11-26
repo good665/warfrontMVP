@@ -219,7 +219,7 @@ UI = {
     '서버와 연결이 끊겼습니다. 네트워크를 확인해 주세요.': 'Lost connection to the server. Check your network.',
     '서버에 접속할 수 없습니다. 잠시 후 다시 시도해 주세요.': 'Cannot reach the server. Try again shortly.', '연결 확인 중: ': 'Checking connection: ',
     # --- Squad RTS lobby, pause, result ---------------------------------------------------
-    '집결 ▼': 'Rally ▼', '이번 경기의 일시정지 3회를 모두 사용했습니다.': "You've used all 3 pauses this match.",
+    '이번 경기의 일시정지 3회를 모두 사용했습니다.': "You've used all 3 pauses this match.",
     '상대가 일시정지했습니다. 상대가 재개할 때까지 기다려 주세요.': 'Your opponent paused. Wait for them to resume.',
     '일시정지 상태를 확인하지 못했습니다. ESC를 눌러 다시 시도해 주세요.': 'Could not confirm the pause. Press ESC to try again.',
     '횟수 제한 없음': 'No limit', '남은 횟수 {0}/3': 'Left {0}/3', '서버 확인 중…': 'Checking server…', '상대가 일시정지했습니다': 'Opponent paused',

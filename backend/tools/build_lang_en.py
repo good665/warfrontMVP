@@ -32,7 +32,10 @@ SERVER = {
     '추적의 이빨': 'Hunting Bite', '수호자의 결의': "Guardian's Resolve", '튼튼한 배짱': 'Iron Belly',
     # items
     '도끼': 'Axe', '갑옷': 'Armor', '포탈': 'Portal', '업그레이드 포탈': 'Upgraded Portal', '팽이': 'Spinning Top',
-    '탱탱볼': 'Bouncy Ball', '긴 채찍': 'Long Whip', '슈퍼점프': 'Super Jump', '일반 공격 금지 저주': 'Curse: No Attacks',
+    '탱탱볼': 'Bouncy Ball', '긴 채찍': 'Long Whip', '동전': 'Coin', '황금종': 'Golden Bell',
+    '우리 성문이 무너졌습니다!\n성 2층의 황금종을 지키세요': "Our gate has fallen!\nDefend the golden bell on the keep's 2nd floor",
+    '적 성문이 무너졌습니다!\n성 안 2층의 황금종을 부수면 승리합니다': "The enemy gate has fallen!\nBreak the golden bell on the keep's 2nd floor to win",
+    '황금종이 부서져 경기가 종료되었습니다.': 'The golden bell was broken. The match is over.','슈퍼점프': 'Super Jump', '일반 공격 금지 저주': 'Curse: No Attacks',
     '스킬 금지 저주': 'Curse: No Skills', '필살기 금지 저주': 'Curse: No Ultimate',
 }
 DESC = {
@@ -64,7 +67,7 @@ CURSE_EN = dict(curse_attack='basic attacks', curse_skill='skills', curse_ultima
 CLIENT = {
     # stats panel and skill tooltips (RtsStatsHud)
     '장거리': 'Ranged', '단거리': 'Melee', '공격력': 'Attack', '물리 방어력': 'Armor', '마법 방어력': 'Magic Res',
-    '스피드': 'Speed', 'HP 흡수율 {0:0}%': 'Lifesteal {0:0}%', '물리 방어력 무시 {0:0}%': 'Armor pen {0:0}%',
+    '스피드': 'Speed', '최고 레벨': 'Max level', '경험치 {0}/{1}': 'XP {0}/{1}', 'HP 흡수율 {0:0}%': 'Lifesteal {0:0}%', '물리 방어력 무시 {0:0}%': 'Armor pen {0:0}%',
     '마법 방어력 무시 {0:0}%': 'Magic pen {0:0}%',
     '기본 공격 · {0}\n{1} 물리 공격 (공격력 {2:0.#})': 'Basic attack · {0}\n{1} physical attack (attack {2:0.#})',
     '스킬 Q · {0}  (재사용 {1:0}초, 마법 피해)\n{2}': 'Skill Q · {0}  ({1:0} s cooldown, magic damage)\n{2}',
@@ -90,12 +93,15 @@ CLIENT = {
     '[{0}] 또는 우클릭 장착 · ': '[{0}] or right-click to equip · ', '[{0}] 사용 · 1회용 · ': '[{0}] to use · single use · ',
     '은색 · 같은 장비 2개 · 효과 2배': 'Silver · 2 of the same gear · 2x effect',
     '금색 · 같은 장비 3개 · 효과 3배': 'Gold · 3 of the same gear · 3x effect',
+    '동색 · 같은 무기 {0}/3개 · 3개면 은색': 'Bronze · {0}/3 of this weapon · 3 make silver',
+    '은색 · 같은 무기 {0}/9개 · 공격력 크게 증가 · 9개면 금색': 'Silver · {0}/9 of this weapon · big attack boost · 9 make gold',
+    '금색 · 같은 무기 9개 · 공격력 최대 증가': 'Gold · 9 of this weapon · maximum attack boost',
     '{0}Ctrl+{1} 버리기': '{0}Ctrl+{1} to drop', '봉인': 'Sealed', '저주로 봉인됨 · {0}초 남음': 'Sealed by a curse · {0} s left',
     '저주': 'Curse',
     # battle bar, respawn, floor hints (NovemberBattleHud, SquadMapView)
     '이동': 'Move', '조작 설정': 'Controls', '항복 · 마을': 'Surrender · Town',
     '영웅 부활까지 {0:0.0}초\n마우스 · 터치로 360° 둘러보기': 'Hero respawns in {0:0.0} s\nLook around 360° with mouse or touch',
-    '바깥 보기 · WASD 이동 · G 집결 · Tab: 건물 안으로': 'Outside view · WASD pan · G rally · Tab: back inside',
+    '바깥 보기 · WASD 이동 · Tab: 건물 안으로': 'Outside view · WASD pan · Tab: back inside',
     '건물 내부 · Tab: 바깥 보기': 'Inside a building · Tab: outside view',
     '바깥 본진·부대가 공격받고 있습니다 (Tab)': 'Your base or army outside is under attack (Tab)',
 }
@@ -117,6 +123,7 @@ def table():
             rows[item['name']] = f"Fitted Armor ({NAMES[item['owner']]})"
         else:
             rows[item['name']] = SERVER[item['name']]
+    rows.update({k: v for k, v in SERVER.items() if '황금종' in k})  # bell name, gate notices, match end
     for curse, what in CURSE_TARGET.items():
         rows[f'상대편 {what}을 1분간 금지시킵니다'] = f"Enemy {CURSE_EN[curse]} sealed for 1 minute"
         rows[f'저주에 걸렸습니다!\n1분간 {what}을 사용할 수 없습니다'] = f"You've been cursed!\nNo {CURSE_EN[curse]} for 1 minute"

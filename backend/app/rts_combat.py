@@ -3,11 +3,22 @@ import math
 from .zodiac_rules import ZODIAC, DAMAGE_SCALE
 from .squad_items import armor_bonus, weapon_bonus
 from .rts_vehicles import RIDE_SPEED
+from .rts_map import bounds
 
 STAT_KEYS = ('hp', 'attack', 'armor', 'magic_armor', 'speed', 'armor_pen', 'magic_pen', 'lifesteal')
 COMBAT_RULES = dict(attack_reach=145., heavy_reach=210., attack_dot=.35)
 # Unity plays the tiger's Mixamo clips at 2x (2.4s slash Q, 5.4s roar E); the hero stays put and holds fire meanwhile.
 TIGER_CAST_SECONDS = dict(skill1=1.2, skill2=2.7)
+KNOCKBACK = 10.  # world units a hero is pushed away from whoever hit them
+# Hero levels 1-10 earned in the match. shortcut: XP and per-level growth are first guesses, tune after playtests.
+MAX_LEVEL = 10
+XP = dict(hero=100, assist=50, unit=15, nearby=7)
+ASSIST_SECONDS, NEARBY_XP = 10., 600.
+LEVEL_HP, LEVEL_ATTACK = .06, .05  # per level above 1
+
+
+def xp_next(level):
+    return 100 + 50 * (level - 1)
 
 
 def distance(a, b):
@@ -17,8 +28,8 @@ def distance(a, b):
 class RtsCombat:
     @staticmethod
     def actor(uid, kind, team, x, y, hp, floor=1):
-        a = dict(id=uid, kind=kind, team=team, x=x, y=y, hp=float(hp), max_hp=float(hp), fx=1.-2*team, fy=0., attack_cooldown=0., dodge_cooldown=0., skill1_cooldown=0., skill2_cooldown=0., dodge_left=0., dodge_dx=0., dodge_dy=0., hit_flash=0., respawn_left=0., charge_active=False, charge_time=0., charge_ratio=0., protected=0., body_radius=dict(hero=22., guard=22., archer=20., healer=20., base=75.)[kind], action_id=0, action_target='', action_kind='', action_left=0., action_duration=0., action_fx=1.-2*team, action_fy=0., attack_phase='idle', _action_hits=set())
-        a.update(floor=floor, jump_left=0., jump_cooldown=0., slow_left=0., stun_left=0., poison_left=0., poison_damage=0., poison_owner='', owner_id='', shield=0., shield_left=0., cast_left=0.)
+        a = dict(id=uid, kind=kind, team=team, x=x, y=y, hp=float(hp), max_hp=float(hp), fx=1.-2*team, fy=0., attack_cooldown=0., dodge_cooldown=0., skill1_cooldown=0., skill2_cooldown=0., dodge_left=0., dodge_dx=0., dodge_dy=0., hit_flash=0., respawn_left=0., charge_active=False, charge_time=0., charge_ratio=0., protected=0., body_radius=dict(hero=22., guard=22., archer=20., healer=20., base=75., bell=40.)[kind], action_id=0, action_target='', action_kind='', action_left=0., action_duration=0., action_fx=1.-2*team, action_fy=0., attack_phase='idle', _action_hits=set())
+        a.update(floor=floor, hit_kind='', hit_by='', jump_left=0., jump_cooldown=0., slow_left=0., stun_left=0., poison_left=0., poison_damage=0., poison_owner='', owner_id='', shield=0., shield_left=0., cast_left=0.)
         return a
 
     @staticmethod
@@ -32,6 +43,9 @@ class RtsCombat:
         result = {k: float(rules[k]) for k in STAT_KEYS}
         result.update(health=result['hp'], cooldown=0.)
         result['attack'] += weapon_bonus(h)
+        grow = h.get('level', 1) - 1
+        result['attack'] *= 1 + LEVEL_ATTACK * grow
+        result['hp'] = result['health'] = result['hp'] * (1 + LEVEL_HP * grow)
         if h['speed_left'] > 0: result['speed'] *= 1.45
         if h.get('vehicle'): result['speed'] *= RIDE_SPEED[h['vehicle']]
         if h['rally_left'] > 0: result['attack'] *= 1.2
@@ -72,7 +86,11 @@ class RtsCombat:
         target['shield'] -= blocked
         amount = min(target['hp'], max(0., amount - blocked))
         target['hp'] -= amount
-        target['hit_flash'] = .16
+        # Unity picks the hit-stop length from hit_kind and times it to hit_by's weapon contact frame.
+        target.update(hit_flash=.16, hit_kind=kind, hit_by=source['id'] if source is not None else '')
+        # 'true' is poison ticking every frame: it must not push the hero along.
+        if target['kind'] == 'hero' and source is not None and amount > 0 and kind != 'true': self.knockback(target, source)
+        if hero_source and amount > 0: target.setdefault('_hurt_by', {})[source['id']] = self.elapsed
         if hero_source and source['hp'] > 0 and kind != 'true':
             source['hp'] = min(source['max_hp'], source['hp'] + amount * self.stats(source)['lifesteal'])
         if target['hp'] <= 0:
@@ -80,7 +98,47 @@ class RtsCombat:
             if target['kind'] == 'hero':
                 target.update(respawn_left=8., shield=0.)
                 target['_pending_actions'].clear()
+            self.award_kill(target, source)
         return amount
+
+    def award_kill(self, target, source):
+        hurt = target.pop('_hurt_by', {})
+        if target['kind'] == 'base': return
+        # source can be a proxy copy (items), so look the hero up by id
+        killer = self.heroes.get(source['id']) if source is not None else None
+        if target['kind'] == 'hero':
+            if killer: self.gain_xp(killer, XP['hero'])
+            for pid, at in hurt.items():
+                h = self.heroes.get(pid)
+                if h and h is not killer and h['team'] != target['team'] and self.elapsed - at <= ASSIST_SECONDS:
+                    self.gain_xp(h, XP['assist'])
+            return
+        if not killer: return
+        self.gain_xp(killer, XP['unit'])
+        for h in self.heroes.values():
+            if (h is not killer and h['team'] == killer['team'] and h['hp'] > 0 and h['floor'] == target['floor']
+                    and distance(h, target) <= NEARBY_XP):
+                self.gain_xp(h, XP['nearby'])
+
+    def gain_xp(self, h, amount):
+        if h['level'] >= MAX_LEVEL: return
+        h['xp'] += amount
+        while h['level'] < MAX_LEVEL and h['xp'] >= xp_next(h['level']):
+            h['xp'] -= xp_next(h['level'])
+            old = h['max_hp']
+            h['level'] += 1
+            h['max_hp'] = self.stats(h)['health']
+            if h['hp'] > 0: h['hp'] += h['max_hp'] - old  # the new HP arrives filled; dead heroes respawn full anyway
+        if h['level'] >= MAX_LEVEL: h['xp'] = 0
+
+    def knockback(self, target, source):
+        dx, dy = target['x'] - source['x'], target['y'] - source['y']
+        n = math.hypot(dx, dy)
+        if not n: return
+        x0, y0, x1, y1 = bounds(target['floor'])
+        x = max(x0, min(x1, target['x'] + dx / n * KNOCKBACK))
+        y = max(y0, min(y1, target['y'] + dy / n * KNOCKBACK))
+        if not self.closed(target, x, y): target.update(x=x, y=y)  # never shove into a wall
 
     def event(self, h, kind, radius, text='', skill=''):
         self.next_id += 1
@@ -161,8 +219,8 @@ class RtsCombat:
     def public(self, a):
         private = {'input', 'input_at', 'sequence'}
         result = {k: v for k, v in a.items() if not k.startswith('_') and k not in private}
-        names = dict(base='본진', guard='수호병', archer='궁수', healer='치유사', elite='중간보스', grunt='쫄병', dragon_boss='중앙 용')
+        names = dict(base='본진', bell='황금종', guard='수호병', archer='궁수', healer='치유사', elite='중간보스', grunt='쫄병', dragon_boss='중앙 용')
         result.update(name=ZODIAC[a['character']]['name'] if a['kind'] == 'hero' else names[a['kind']],
                       role=2 if a['kind'] == 'healer' else 1 if a['kind'] == 'guard' else 0,
-                      level=1, party_code=f'squad-{a["team"]}', windup=0., windup_left=0.)
+                      level=a.get('level', 1), party_code=f'squad-{a["team"]}', windup=0., windup_left=0.)
         return result
