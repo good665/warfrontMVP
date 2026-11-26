@@ -45,7 +45,7 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems, RtsVehicles):
             self.camps.append(dict(team=team, owner_id=pid, x=x, y=y, radius=180., resources=resource_points(x, y)))
             dx, dy = (1 if x < EXTENT/2 else -1), (1 if y < EXTENT/2 else -1)
             h = self.actor(pid, 'hero', team, x+dx*180, y+dy*180, ZODIAC['rat']['hp'], 1)
-            h.update(owner_id=pid, name='플레이어', character='rat', character_locked=False, level=1, xp=0,
+            h.update(owner_id=pid, name='플레이어', character='rat', character_locked=False, level=1, xp=0, streak=0,
                      sequence=-1, input={}, input_at=-1., command='hold', recruited=True,
                      _pending_actions={}, weapon='', armor='', _bag=['']*BAG_SIZE,
                      curse_attack_left=0., curse_skill_left=0., curse_ultimate_left=0.,

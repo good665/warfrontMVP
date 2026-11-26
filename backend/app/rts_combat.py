@@ -1,7 +1,7 @@
 """Actor state, damage and zodiac abilities shared by the RTS simulation."""
 import math
 from .zodiac_rules import ZODIAC, DAMAGE_SCALE
-from .squad_items import armor_bonus, weapon_bonus
+from .squad_items import armor_bonus, weapon_bonus, get_slot, set_slot, base, copies, tier
 from .rts_vehicles import RIDE_SPEED
 from .rts_map import bounds
 
@@ -14,11 +14,19 @@ KNOCKBACK = 10.  # world units a hero is pushed away from whoever hit them
 MAX_LEVEL = 10
 XP = dict(hero=100, assist=50, unit=15, nearby=7)
 ASSIST_SECONDS, NEARBY_XP = 10., 600.
+# A hero with 2+ hero kills in one life carries a bounty: the enemy hero who ends it gets 50 XP per kill and knocks one gear piece loose.
+BOUNTY_STREAK, BOUNTY_XP = 2, 50
 LEVEL_HP, LEVEL_ATTACK = .06, .05  # per level above 1
 
 
 def xp_next(level):
     return 100 + 50 * (level - 1)
+
+
+def bounty_gear_slot(hero):
+    """The equipped slot a claimed bounty drops: higher tier of weapon (0) / armor (1), weapon on a tie, None if bare."""
+    worn = [i for i in (0, 1) if get_slot(hero, i)]
+    return max(worn, key=lambda i: (tier(get_slot(hero, i)), -i), default=None)
 
 
 def distance(a, b):
@@ -107,7 +115,12 @@ class RtsCombat:
         # source can be a proxy copy (items), so look the hero up by id
         killer = self.heroes.get(source['id']) if source is not None else None
         if target['kind'] == 'hero':
-            if killer: self.gain_xp(killer, XP['hero'])
+            streak, target['streak'] = target['streak'], 0
+            if killer:
+                if streak >= BOUNTY_STREAK: self.claim_bounty(target, killer, streak)
+                self.gain_xp(killer, XP['hero'])
+                killer['streak'] += 1
+                if killer['streak'] >= BOUNTY_STREAK: self.announce_bounty(killer)
             for pid, at in hurt.items():
                 h = self.heroes.get(pid)
                 if h and h is not killer and h['team'] != target['team'] and self.elapsed - at <= ASSIST_SECONDS:
@@ -119,6 +132,22 @@ class RtsCombat:
             if (h is not killer and h['team'] == killer['team'] and h['hp'] > 0 and h['floor'] == target['floor']
                     and distance(h, target) <= NEARBY_XP):
                 self.gain_xp(h, XP['nearby'])
+
+    def announce_bounty(self, h):
+        name = ZODIAC[h['character']]['name']
+        for other in self.heroes.values():
+            self.notify(other, f'{name}에게 현상금이 걸렸습니다' if other['team'] == h['team'] else f'적 {name}에게 현상금! 처치하면 장비를 떨굽니다', False)
+
+    def claim_bounty(self, target, killer, streak):
+        self.gain_xp(killer, BOUNTY_XP * streak)
+        slot = bounty_gear_slot(target)
+        if slot is not None:
+            item = get_slot(target, slot)
+            self.place(target, base(item))
+            left = copies(item) - 1
+            set_slot(target, slot, '' if left == 0 else base(item) if left == 1 else f'{base(item)}*{left}')
+        text = f"{ZODIAC[target['character']]['name']}의 현상금을 {ZODIAC[killer['character']]['name']}이(가) 차지했습니다"
+        for h in self.heroes.values(): self.notify(h, text, False)
 
     def gain_xp(self, h, amount):
         if h['level'] >= MAX_LEVEL: return
