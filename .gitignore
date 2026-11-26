@@ -32,3 +32,8 @@ __pycache__/
 
 # Unity generated build backup folders
 *_BackUpThisFolder_ButDontShipItWithYourGame/
+
+# Local Claude Code settings, asset staging and backups (kept on disk, not in git)
+.claude/
+*-staging/
+output/
