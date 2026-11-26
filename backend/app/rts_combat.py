@@ -117,10 +117,12 @@ class RtsCombat:
         if target['kind'] == 'hero':
             streak, target['streak'] = target['streak'], 0
             if killer:
-                if streak >= BOUNTY_STREAK: self.claim_bounty(target, killer, streak)
+                claim = self.claim_bounty(target, killer, streak) if streak >= BOUNTY_STREAK else ''
                 self.gain_xp(killer, XP['hero'])
-                killer['streak'] += 1
-                if killer['streak'] >= BOUNTY_STREAK: self.announce_bounty(killer)
+                if killer['hp'] > 0: killer['streak'] += 1  # poison or a thrown item can land after the killer died
+                if killer['streak'] >= BOUNTY_STREAK: self.announce_bounty(killer, claim)
+                elif claim:
+                    for h in self.heroes.values(): self.notify(h, claim, False)
             for pid, at in hurt.items():
                 h = self.heroes.get(pid)
                 if h and h is not killer and h['team'] != target['team'] and self.elapsed - at <= ASSIST_SECONDS:
@@ -133,10 +135,11 @@ class RtsCombat:
                     and distance(h, target) <= NEARBY_XP):
                 self.gain_xp(h, XP['nearby'])
 
-    def announce_bounty(self, h):
-        name = ZODIAC[h['character']]['name']
+    def announce_bounty(self, h, claim=''):
+        # One notice slot per hero: a claim made by the same kill rides in front so it is not overwritten.
+        name, lead = ZODIAC[h['character']]['name'], claim + ' · ' if claim else ''
         for other in self.heroes.values():
-            self.notify(other, f'{name}에게 현상금이 걸렸습니다' if other['team'] == h['team'] else f'적 {name}에게 현상금! 처치하면 장비를 떨굽니다', False)
+            self.notify(other, lead + (f'{name}에게 현상금이 걸렸습니다' if other['team'] == h['team'] else f'적 {name}에게 현상금! 처치하면 장비를 떨굽니다'), False)
 
     def claim_bounty(self, target, killer, streak):
         self.gain_xp(killer, BOUNTY_XP * streak)
@@ -146,8 +149,7 @@ class RtsCombat:
             self.place(target, base(item))
             left = copies(item) - 1
             set_slot(target, slot, '' if left == 0 else base(item) if left == 1 else f'{base(item)}*{left}')
-        text = f"{ZODIAC[target['character']]['name']}의 현상금을 {ZODIAC[killer['character']]['name']}이(가) 차지했습니다"
-        for h in self.heroes.values(): self.notify(h, text, False)
+        return f"{ZODIAC[target['character']]['name']}의 현상금을 {ZODIAC[killer['character']]['name']}이(가) 차지했습니다"
 
     def gain_xp(self, h, amount):
         if h['level'] >= MAX_LEVEL: return

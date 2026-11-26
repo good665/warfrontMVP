@@ -103,3 +103,19 @@ def test_assist_does_not_count():
     game.damage(b, 1., c)
     game.damage(b, 999., a)
     assert a['streak'] == 1 and c['streak'] == 0
+
+
+def test_claim_notice_survives_a_new_bounty_on_the_claimer():
+    game, a, b = duel()
+    bounty_on_a(game, a, b)
+    b['streak'] = 1
+    kill(game, a, b)
+    assert '차지' in a['_notice'] and '차지' in b['_notice'] and '현상금' in a['_notice'].split('차지')[-1]
+
+
+def test_dead_killer_does_not_gain_streak():
+    game, a, b = duel()
+    a['hp'] = 0.  # e.g. a's poison finishes b after a died
+    b['hp'] = 5.
+    game.damage(b, 999., a)
+    assert b['hp'] <= 0 and a['streak'] == 0
