@@ -260,7 +260,7 @@ class RtsItems:
             self.teleport(h, OUTDOOR, *nearest_open(OUTDOOR, x, y, False, self.opened))
         else:
             # Arrive where that building's front door drops you; a door that is off this match (2:2 manor) does not count.
-            # keeps are locked until their base falls; the dev panel walks in anyway (2F: off the stairs)
+            # keeps are locked until their base falls; the dev panel walks in anyway
             door = next((d for d in DOORS if d['to_floor'] == floor and (floor in KEEP_FLOORS or d['floor'] == OUTDOOR
                          and is_door(OUTDOOR, d['cx'], d['cy'], self.opened))), None)
             if door is None: raise ValueError('unknown_floor')

@@ -46,7 +46,7 @@ def test_outdoor_connected():
 
 def test_interiors_connected():
     floors = {d['floor'] for d in m.DOORS if d['floor'] != m.OUTDOOR}
-    assert floors == set(range(2, 18))  # 6 shared, 2 manors, 4 keeps of two floors
+    assert floors == set(range(2, 14))  # 6 shared, 2 manors, 4 one-floor keeps
     for floor in floors:
         doors = [(d['cx'], d['cy']) for d in m.DOORS if d['floor'] == floor]
         seen = reachable(floor, doors[0])
@@ -64,10 +64,10 @@ def test_doors_pair_up():
 
 
 def test_interiors_off_board():
-    for floor in range(2, 18):
+    for floor in range(2, 14):
         x0, y0, x1, y1 = m.bounds(floor)
         assert x0 >= 6800 and x1 <= 9200
-    assert len(m.map_payload()['interiors']) == 16
+    assert len(m.map_payload()['interiors']) == 12
 
 
 def test_manors_fill_the_empty_solo_corners_with_doors_facing_inward():

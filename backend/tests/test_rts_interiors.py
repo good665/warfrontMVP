@@ -120,8 +120,8 @@ def test_map_endpoint():
         response = client.get('/v1/squad/map')
         duo = client.get('/v1/squad/map', params=dict(team_size=2))
     assert response.status_code == 200 and duo.status_code == 200
-    assert len(response.json()['interiors']) == 16
-    assert len(duo.json()['interiors']) == 6 + 8  # no manors; keeps in both modes
+    assert len(response.json()['interiors']) == 12
+    assert len(duo.json()['interiors']) == 6 + 4  # no manors; keeps in both modes
 
 
 def test_manor_door_only_exists_in_one_vs_one():
@@ -151,33 +151,31 @@ def test_hero_order_onto_house_does_not_enter_by_accident():
     assert hero['floor'] == m.OUTDOOR
 
 
-def test_keep_opens_when_its_base_falls_and_its_stairs_lead_to_the_bell():
+def test_keep_opens_when_its_base_falls_and_holds_the_bell_on_its_only_floor():
     game = RtsGame(['a', 'b'])
     hero, keep, bell = game.heroes['a'], m.KEEPS[1], game.bells[1]  # b's keep and bell
-    assert bell['floor'] == keep['top'] and bell['team'] == 1
+    assert bell['floor'] == keep['floor'] and bell['team'] == 1
+    assert not m.blocked(keep['floor'], *m.cell(bell['x'], bell['y']))
+    assert [k for f, i in m.INTERIORS.items() for k in [i[3]] if k.startswith('keep')] == ['keep'] * len(m.KEEPS)
+    assert not any(d['floor'] == keep['floor'] and d['to_floor'] != m.OUTDOOR for d in m.DOORS)  # no stairs up
     step_on(hero, m.OUTDOOR, *keep['door'])
     game.tick(.05)
     assert hero['floor'] == m.OUTDOOR  # locked while b's gate stands
     game.bases[1]['hp'] = 0
     game.tick(.05)
-    assert '성문' in hero['_notice'] and ('keep', *keep['door']) in game.opened
+    assert '성 안의 황금종' in hero['_notice'] and ('keep', *keep['door']) in game.opened
     hero['door_cooldown'] = 0
     step_on(hero, m.OUTDOOR, *keep['door'])
     game.tick(.05)
     assert hero['floor'] == keep['floor']
-    hero['door_cooldown'] = 0
-    step_on(hero, keep['floor'], *keep['stairs'])
-    game.tick(.05)
-    assert hero['floor'] == keep['top']
 
 
-def test_bot_heads_for_the_keep_door_then_the_stairs_then_the_bell():
+def test_bot_heads_for_the_keep_door_then_the_bell():
     game = RtsGame(['a', 'bot:1'])
     bot, keep = game.heroes['bot:1'], m.KEEPS[0]  # a's keep
     game.bases[0]['hp'] = 0
     game.tick(.05)
-    for floor, goal in ((m.OUTDOOR, c(*keep['door'])), (keep['floor'], c(*keep['stairs'])),
-                        (keep['top'], (game.bells[0]['x'], game.bells[0]['y']))):
+    for floor, goal in ((m.OUTDOOR, c(*keep['door'])), (keep['floor'], (game.bells[0]['x'], game.bells[0]['y']))):
         bot['floor'] = floor
         game.bot_input('bot:1')
         assert (bot['input']['order_x'], bot['input']['order_y']) == goal

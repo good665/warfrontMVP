@@ -55,7 +55,7 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems, RtsVehicles):
                      portal_left=0., portal_out_left=0., portal_x=0., portal_y=0., _portal_from=None, _portal_to=None)
             self.heroes[pid] = self.units[pid] = h
             keep = KEEPS[index]
-            bell = self.actor('bell-' + pid, 'bell', team, *keep['bell'], BELL_HP, keep['top'])
+            bell = self.actor('bell-' + pid, 'bell', team, *keep['bell'], BELL_HP, keep['floor'])
             bell['owner_id'] = pid
             self.bells.append(bell)
 
@@ -270,7 +270,7 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems, RtsVehicles):
                 self.damage(min(enemies,key=lambda a:distance(a,base)),26,base);base['attack_cooldown']=1.
         self.effects=[e for e in self.effects if e['expires']>self.elapsed]
         self.open_keeps()
-        # A fallen base only opens its keep; the match is won by breaking the golden bell on the keep's 2F.
+        # A fallen base only opens its keep; the match is won by breaking the golden bell inside the keep.
         dead=[team for team in (0,1) if all(b['hp']<=0 for b in self.bells if b['team']==team)]
         if dead:
             self.winner=1-dead[0] if len(dead)==1 else None
@@ -285,21 +285,19 @@ class RtsGame(RtsWaves, RtsCombat, RtsSpacing, RtsItems, RtsVehicles):
             if base['hp'] > 0 or door in self.opened: continue
             self.opened.add(door)
             for h in self.heroes.values():
-                self.notify(h, '우리 성문이 무너졌습니다!\n성 2층의 황금종을 지키세요' if h['team'] == base['team']
-                            else '적 성문이 무너졌습니다!\n성 안 2층의 황금종을 부수면 승리합니다', True)
+                self.notify(h, '우리 성문이 무너졌습니다!\n성 안의 황금종을 지키세요' if h['team'] == base['team']
+                            else '적 성문이 무너졌습니다!\n성 안의 황금종을 부수면 승리합니다', True)
 
     def bot_input(self,pid):
         h=self.heroes[pid]
         enemies=[b for b in self.bases if b['team']!=h['team'] and b['hp']>0]
         if enemies: goal=min(enemies,key=lambda b:distance(h,b))
-        else:  # gate down: walk in, climb the stairs, ring the bell to pieces
+        else:  # gate down: walk in and ring the bell to pieces
             index=next((i for i,b in enumerate(self.bells) if b['team']!=h['team'] and b['hp']>0),None)
             if index is None: return
             keep,bell=KEEPS[index],self.bells[index]
-            if h['floor']==keep['top']: goal=bell
-            else:
-                c=keep['stairs'] if h['floor']==keep['floor'] else keep['door']
-                goal=dict(x=(c[0]+.5)*CELL,y=(c[1]+.5)*CELL)
+            if h['floor']==keep['floor']: goal=bell
+            else: goal=dict(x=(keep['door'][0]+.5)*CELL,y=(keep['door'][1]+.5)*CELL)
         self.input(pid,dict(sequence=h['sequence']+1,command='attack_move',unit_ids=[u['id'] for u in self.units.values() if u['owner_id']==pid and u.get('command') != 'wave'],order_x=goal['x'],order_y=goal['y'],aim_x=goal['x'],aim_y=goal['y']))
 
     def snapshot(self,pid,code,now):
